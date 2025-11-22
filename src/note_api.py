@@ -90,7 +90,10 @@ class NoteUploader:
             print(f"[INFO] Draft created. ID: {note_id}, Key: {note_key}")
 
             if status == 'published':
-                print("[WARN] Auto-publishing is risky. Keeping as draft for safety.")
+                if self.publish_article(note_key):
+                    print(f"[SUCCESS] Article published! Key: {note_key}")
+                else:
+                    print(f"[WARN] Failed to publish. Article remains as draft.")
             
             return f"https://note.com/notes/{note_key}"
 
@@ -99,6 +102,32 @@ class NoteUploader:
             if hasattr(e, 'response') and e.response is not None:
                 print(f"[ERROR] Response: {e.response.text}")
             return None
+
+    def publish_article(self, note_key):
+        """
+        Publishes a draft article.
+        """
+        print(f"[INFO] Publishing article: {note_key}...")
+        url = f'https://note.com/api/v1/notes/{note_key}/publish'
+        
+        # Standard payload for publishing
+        payload = {
+            "share_to_twitter": False,
+            "share_to_facebook": False
+        }
+        
+        try:
+            # Note: Publish usually uses PUT or POST. Let's try POST first as it's common for actions.
+            # Actually, Note API often uses PUT for updates, but /publish might be POST.
+            # Let's try POST.
+            response = self.session.post(url, json=payload)
+            response.raise_for_status()
+            return True
+        except requests.exceptions.RequestException as e:
+            print(f"[ERROR] Publish failed: {e}")
+            if hasattr(e, 'response') and e.response is not None:
+                print(f"[ERROR] Response: {e.response.text}")
+            return False
 
 if __name__ == "__main__":
     # Mock test
