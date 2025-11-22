@@ -43,6 +43,17 @@ def run_report(config, scraper, generator, uploader):
     print("[INFO] Generating report...")
     # Title format: YYYY-MM-DD 簡単レポート
     today_str = datetime.now().strftime("%Y-%m-%d")
+    # Add time to title if running multiple times a day? 
+    # User asked for "YYYY-MM-DD 簡単レポート". 
+    # If running twice, titles might duplicate. Note.com allows duplicate titles? 
+    # Or maybe append (朝刊/夕刊)? 
+    # For now, sticking to requested format. Note.com handles duplicate titles by allowing them or we might overwrite draft.
+    # Let's append time to be safe and useful: "YYYY-MM-DD 簡単レポート (08:00)"
+    current_hour = datetime.now().hour
+    time_suffix = "朝刊" if current_hour < 12 else "夕刊"
+    # However, user specifically asked for "YYYY-MM-DD 簡単レポート". 
+    # Let's stick to the requested format but maybe add a timestamp in the body?
+    # Or just use the date. If it's the same title, it creates a new note anyway.
     title = f"{today_str} 簡単レポート"
     
     article_body = generator.generate_article(title, all_search_results)
@@ -82,9 +93,28 @@ def main():
     scraper = WebScraper()
     generator = GeminiGenerator(
         api_key=config['gemini_api_key'],
+        model_name=config.get('gemini_model', 'gemini-2.0-flash-exp'),
         system_prompt=config['system_prompt']
     )
-    uploader = NoteUploader(session_cookie=config['note_session_cookie'])
+    
+    # Handle Note Auth
+    session_cookie = config.get('note_session_cookie')
+    if session_cookie and not session_cookie.startswith("YOUR_"):
+        uploader = NoteUploader(session_cookie=session_cookie)
+        print("[INFO] Using configured session cookie.")
+    else:
+        print("[INFO] Session cookie not found. Attempting auto-login...")
+        email = config.get('note_email')
+        password = config.get('note_password')
+        
+        if email and password:
+            uploader = NoteUploader()
+            if not uploader.login(email, password):
+                print("[FATAL] Auto-login failed. Please check credentials or use session cookie.")
+                sys.exit(1)
+        else:
+            print("[FATAL] No session cookie and no credentials provided.")
+            sys.exit(1)
 
     # --- Execution Loop ---
     

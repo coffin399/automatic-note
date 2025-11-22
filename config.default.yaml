@@ -3,16 +3,28 @@
 # Google Gemini API Key
 # Get it from: https://aistudio.google.com/app/apikey
 gemini_api_key: "YOUR_GEMINI_API_KEY"
+gemini_model: "gemini-2.5-pro" # or gemini-2.5-flash
 
-# Note.com Session Cookie
+# Note.com Session Cookie (Option 1: Recommended)
 # 1. Log in to note.com
 # 2. Open Developer Tools (F12) -> Application -> Cookies
 # 3. Copy the value of "session" cookie (looks like a long random string)
 note_session_cookie: "YOUR_NOTE_SESSION_COOKIE"
 
+# Note.com Auto Login (Option 2: Use if cookie is empty)
+# WARNING: Password is stored in plain text.
+note_email: ""
+note_password: ""
+
 # Target Audience & Topic
 target_audience: "一般のニュース読者"
-topic_genres: ["金融", "政治", "カルチャー", "サブカルチャー"]
+topic_genres: 
+  - "政治・国際情勢"
+  - "経済・ビジネス"
+  - "テクノロジー"
+  - "社会"
+  - "サブカルチャー"
+  - "天気・災害"
 
 # Prompts
 system_prompt: |
@@ -24,11 +36,11 @@ system_prompt: |
   専門用語は使わず、中学生でもわかるレベルの平易な日本語で書いてください。
   
   構成例:
-  ## 金融
+  ## 政治・国際情勢
   - ニュース1の要約
   - ニュース2の要約
   
-  ## 政治
+  ## 経済・ビジネス
   ...
 
 

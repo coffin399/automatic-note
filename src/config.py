@@ -27,9 +27,17 @@ def validate_config(config):
     """
     Validates critical configuration values.
     """
-    required_keys = ["gemini_api_key", "note_session_cookie"]
+    required_keys = ["gemini_api_key", "gemini_model"]
     missing_keys = [key for key in required_keys if not config.get(key) or config.get(key).startswith("YOUR_")]
     
+    # Check for Note auth (either cookie OR email/pass)
+    has_cookie = config.get("note_session_cookie") and not config.get("note_session_cookie").startswith("YOUR_")
+    has_creds = config.get("note_email") and config.get("note_password")
+    
+    if not has_cookie and not has_creds:
+        print("[WARN] Note.com authentication missing. Please set 'note_session_cookie' OR 'note_email'/'note_password'.")
+        missing_keys.append("note_auth")
+
     if missing_keys:
         print(f"[WARN] The following configuration keys seem to be default or missing: {', '.join(missing_keys)}")
         print(f"[WARN] Please update {CONFIG_FILE}.")

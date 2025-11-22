@@ -22,9 +22,22 @@ AIが自動でニュースを収集し、Note.com向けの「簡単レポート�
 ### 2. 設定
 作成された `config.yaml` をメモ帳などで開き、以下の項目を入力してください。
 
+**方法A: セッションCookieを使う（推奨）**
+最も安全で確実な方法です。
 ```yaml
-gemini_api_key: "ここにGeminiのAPIキーを貼り付け"
-note_session_cookie: "ここにNoteのセッションCookieを貼り付け"
+gemini_api_key: "ここにGeminiのAPIキー"
+note_session_cookie: "ここにNoteのセッションCookie"
+# note_email, note_password は空欄でOK
+```
+
+**方法B: 自動ログインを使う**
+Cookieの取得が面倒な場合に使います。
+※ パスワードがファイルに保存されるため、取り扱いに注意してください。
+```yaml
+gemini_api_key: "ここにGeminiのAPIキー"
+note_session_cookie: "" # 空欄にする
+note_email: "あなたのメールアドレス"
+note_password: "あなたのパスワード"
 ```
 
 > **NoteのセッションCookieの取得方法**:

@@ -4,12 +4,46 @@ import markdown
 import re
 
 class NoteUploader:
-    def __init__(self, session_cookie):
-        self.cookies = {"session": session_cookie}
+    def __init__(self, session_cookie=None):
+        self.cookies = {}
+        if session_cookie:
+            self.cookies["session"] = session_cookie
+            
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
             'Accept': 'application/json'
         }
+
+    def login(self, email, password):
+        """
+        Logs in to Note.com and retrieves the session cookie.
+        """
+        print(f"[INFO] Logging in as {email}...")
+        url = 'https://note.com/api/v1/sessions/sign_in'
+        payload = {
+            'email': email,
+            'password': password
+        }
+        
+        try:
+            # Note: This might fail if CAPTCHA is triggered
+            response = requests.post(url, headers=self.headers, json=payload)
+            response.raise_for_status()
+            
+            # Extract cookies
+            if 'session' in response.cookies:
+                self.cookies['session'] = response.cookies['session']
+                print("[SUCCESS] Login successful. Session cookie retrieved.")
+                return True
+            else:
+                print("[ERROR] Login failed. Session cookie not found in response.")
+                return False
+                
+        except requests.exceptions.RequestException as e:
+            print(f"[ERROR] Login failed: {e}")
+            if hasattr(e, 'response') and e.response is not None:
+                print(f"[ERROR] Response: {e.response.text}")
+            return False
 
     def markdown_to_html(self, markdown_text):
         """
@@ -27,6 +61,10 @@ class NoteUploader:
         Creates a new article on Note.com.
         status: 'draft' or 'published' (default: 'draft')
         """
+        if 'session' not in self.cookies:
+            print("[ERROR] No session cookie available. Cannot upload.")
+            return None
+
         print(f"[INFO] Uploading article: {title} (Status: {status})")
         
         body_html = self.markdown_to_html(body_markdown)

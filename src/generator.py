@@ -1,41 +1,48 @@
-import google.generativeai as genai
-import os
+from google import genai
+from google.genai import types
 
 class GeminiGenerator:
-    def __init__(self, api_key, system_prompt):
-        genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel(
-            'gemini-pro',
-            system_instruction=system_prompt
-        )
+    def __init__(self, api_key, model_name, system_prompt):
+        self.client = genai.Client(api_key=api_key)
+        self.model_name = model_name
+        self.system_prompt = system_prompt
 
-    def generate_article(self, title, search_results_dict):
+    def generate_article(self, title, search_results):
         """
-        Generates an article based on the title and a dictionary of search results.
-        search_results_dict: { "Genre": [ {title, snippet, url}, ... ] }
+        Generates an article based on the title and aggregated search results.
+        search_results: Dict {Genre: [results]}
         """
-        context = "以下の検索結果を参考に、レポートを作成してください：\n\n"
+        print(f"[INFO] Generating content for: {title}")
         
-        for genre, results in search_results_dict.items():
-            context += f"### ジャンル: {genre}\n"
-            if not results:
-                context += "（関連ニュースなし）\n\n"
-                continue
-                
-            for i, result in enumerate(results):
-                context += f"- Source {i+1}: {result['title']}\n  {result['snippet']}\n  URL: {result['url']}\n"
-            context += "\n"
+        # Construct context from search results
+        context = ""
+        for genre, results in search_results.items():
+            context += f"\n## {genre}\n"
+            if results:
+                for i, res in enumerate(results, 1):
+                    context += f"{i}. {res['title']}: {res['snippet']}\n"
+            else:
+                context += "(ニュースなし)\n"
 
-        prompt = f"タイトル: {title}\n\n{context}"
+        prompt = f"""
+        Title: {title}
         
-        print(f"[INFO] Generating report for: {title}...")
+        Search Results (Context):
+        {context}
+        
+        Please generate the report based on the system instructions.
+        """
+
         try:
-            response = self.model.generate_content(prompt)
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=self.system_prompt,
+                    temperature=0.7
+                )
+            )
             return response.text
         except Exception as e:
-            print(f"[ERROR] Generation failed: {e}")
+            print(f"[ERROR] Gemini generation failed: {e}")
             return None
-
-if __name__ == "__main__":
-    # Mock test
-    pass
