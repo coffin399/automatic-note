@@ -8,27 +8,11 @@ from scraper import WebScraper
 from generator import GeminiGenerator
 from note_api import NoteUploader
 
-def main():
-    print("=== Note.com AI Writer (Multi-Genre Report) ===")
-    
-    # 1. Load Config
-    try:
-        config = load_config()
-    except Exception as e:
-        print(f"[FATAL] {e}")
-        sys.exit(1)
-
-    if not validate_config(config):
-        print("[INFO] Please update config.yaml and run again.")
-        sys.exit(0)
-
-    # 2. Initialize Components
-    scraper = WebScraper()
-    generator = GeminiGenerator(
-        api_key=config['gemini_api_key'],
-        system_prompt=config['system_prompt']
-    )
-    uploader = NoteUploader(session_cookie=config['note_session_cookie'])
+def run_report(config, scraper, generator, uploader):
+    """
+    Executes a single reporting cycle.
+    """
+    print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Starting report generation cycle...")
 
     # 3. Determine Topics (Genres)
     genres = config.get('topic_genres', ["金融", "政治", "カルチャー", "サブカルチャー"])
@@ -52,8 +36,8 @@ def main():
         time.sleep(1) 
 
     if not any(all_search_results.values()):
-        print("[ERROR] No search results found for any genre. Aborting.")
-        sys.exit(1)
+        print("[ERROR] No search results found for any genre. Skipping this cycle.")
+        return
 
     # 5. Generate Content (Aggregated)
     print("[INFO] Generating report...")
@@ -63,8 +47,8 @@ def main():
     
     article_body = generator.generate_article(title, all_search_results)
     if not article_body:
-        print("[ERROR] Content generation failed. Aborting.")
-        sys.exit(1)
+        print("[ERROR] Content generation failed. Skipping this cycle.")
+        return
 
     print(f"\n--- Generated Report ---\nTitle: {title}\nLength: {len(article_body)} chars\n------------------------\n")
 
@@ -78,6 +62,52 @@ def main():
         print(f"\n[SUCCESS] Article created successfully!\nURL: {note_url}")
     else:
         print("\n[ERROR] Failed to create article.")
+
+def main():
+    print("=== Note.com AI Writer (Scheduled Mode) ===")
+    print("Schedule: Startup, 08:00, 20:00")
+    
+    # 1. Load Config
+    try:
+        config = load_config()
+    except Exception as e:
+        print(f"[FATAL] {e}")
+        sys.exit(1)
+
+    if not validate_config(config):
+        print("[INFO] Please update config.yaml and run again.")
+        sys.exit(0)
+
+    # 2. Initialize Components
+    scraper = WebScraper()
+    generator = GeminiGenerator(
+        api_key=config['gemini_api_key'],
+        system_prompt=config['system_prompt']
+    )
+    uploader = NoteUploader(session_cookie=config['note_session_cookie'])
+
+    # --- Execution Loop ---
+    
+    # 1. Run Immediately on Startup
+    print("\n[SCHEDULE] Running startup job...")
+    run_report(config, scraper, generator, uploader)
+
+    # 2. Enter Scheduler Loop
+    print("\n[SCHEDULE] Waiting for next scheduled time (08:00 or 20:00)...")
+    print("Press Ctrl+C to stop.")
+    
+    while True:
+        now = datetime.now()
+        current_time = now.strftime("%H:%M")
+        
+        if current_time in ["08:00", "20:00"]:
+            print(f"\n[SCHEDULE] It's {current_time}! Starting scheduled job.")
+            run_report(config, scraper, generator, uploader)
+            # Wait 61 seconds to ensure we don't run again in the same minute
+            time.sleep(61)
+        
+        # Check every 30 seconds
+        time.sleep(30)
 
 if __name__ == "__main__":
     main()
