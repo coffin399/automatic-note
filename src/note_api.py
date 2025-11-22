@@ -25,9 +25,17 @@ class NoteUploader:
             'password': password
         }
         
+        # Add headers to mimic browser
+        headers = self.headers.copy()
+        headers.update({
+            'Origin': 'https://note.com',
+            'Referer': 'https://note.com/login',
+            'X-Requested-With': 'XMLHttpRequest'
+        })
+
         try:
             # Note: This might fail if CAPTCHA is triggered
-            response = requests.post(url, headers=self.headers, json=payload)
+            response = requests.post(url, headers=headers, json=payload)
             response.raise_for_status()
             
             # Extract cookies
@@ -37,6 +45,10 @@ class NoteUploader:
                 return True
             else:
                 print("[ERROR] Login failed. Session cookie not found in response.")
+                try:
+                    print(f"[DEBUG] Response Body: {response.json()}")
+                except:
+                    print(f"[DEBUG] Response Body: {response.text}")
                 return False
                 
         except requests.exceptions.RequestException as e:
