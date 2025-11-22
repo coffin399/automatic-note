@@ -115,86 +115,75 @@ class NoteUploader:
 
     def create_article(self, title, body_markdown, status='draft'):
         """
-        Creates a new article on Note.com using a 3-step process:
-        1. Create Draft (POST)
-        2. Update Content (PUT)
-        3. Publish (PUT) - if requested
+        Creates a new article on Note.com.
         """
-        print(f"[INFO] Starting article creation process: {title}")
+        print(f"[INFO] Creating article: {title} (Status: {status})")
         
         body_html = self.markdown_to_html(body_markdown)
         print(f"[DEBUG] HTML Body Preview: {body_html[:500]}...")
         
-        # Step 1: Create Draft (Minimal Payload)
-        url_create = 'https://note.com/api/v1/text_notes'
-        payload_create = {
+        url = 'https://note.com/api/v1/text_notes'
+        
+        # Try sending full body in initial POST with headers
+        payload = {
             'name': title,
-            'body': '', # Try empty body first to just get ID
+            'body': body_html,
             'template_key': None
         }
         
         try:
-            response = self.session.post(url_create, headers=self.get_headers(), json=payload_create)
+            # Use session to preserve cookies
+            response = self.session.post(url, headers=self.get_headers(), json=payload)
             response.raise_for_status()
             data = response.json()
             
+            # Debug: Print full response data to see if body was accepted
+            print(f"[DEBUG] Create Response Data: {str(data)[:500]}...")
+            
             note_id = data['data']['id']
             note_key = data['data']['key']
-            print(f"[INFO] Step 1: Draft created. ID: {note_id}, Key: {note_key}")
-            
-            # Step 2: Update Content (Save Draft)
-            if self.update_article(note_id, title, body_html, status='draft'):
-                print(f"[INFO] Step 2: Content saved successfully.")
-            else:
-                print(f"[ERROR] Step 2: Failed to save content.")
-                return None
+            print(f"[INFO] Draft created. ID: {note_id}, Key: {note_key}")
 
-            # Step 3: Publish (if requested)
             if status == 'published':
                 if self.publish_article(note_id, title, body_html):
-                    print(f"[SUCCESS] Step 3: Article published! Key: {note_key}")
+                    print(f"[SUCCESS] Article published! Key: {note_key}")
                 else:
-                    print(f"[WARN] Step 3: Failed to publish. Article remains as draft.")
+                    print(f"[WARN] Failed to publish. Article remains as draft.")
             
             return f"https://note.com/notes/{note_key}"
 
         except requests.exceptions.RequestException as e:
-            print(f"[ERROR] Creation process failed: {e}")
+            print(f"[ERROR] Upload failed: {e}")
             if hasattr(e, 'response') and e.response is not None:
                 print(f"[ERROR] Response: {e.response.text}")
             return None
-
-    def update_article(self, note_id, title, body, status='draft'):
-        """
-        Updates an existing article (draft).
-        """
-        print(f"[INFO] Updating article (ID: {note_id})...")
-        url = f'https://note.com/api/v1/text_notes/{note_id}'
-        
-        payload = {
-            'body': body,
-            'name': title,
-            'status': status,
-            'template_key': None,
-            'eyecatch_image_key': None
-        }
-        
-        try:
-            response = self.session.put(url, headers=self.get_headers(), json=payload)
-            response.raise_for_status()
-            print("[DEBUG] Update (PUT) successful.")
-            return True
-        except requests.exceptions.RequestException as e:
-            print(f"[ERROR] Update (PUT) failed: {e}")
-            if hasattr(e, 'response') and e.response is not None:
-                print(f"[ERROR] Response: {e.response.text}")
-            return False
 
     def publish_article(self, note_id, title, body):
         """
         Publishes a draft article.
         """
-        return self.update_article(note_id, title, body, status='published')
+        print(f"[INFO] Publishing article (ID: {note_id})...")
+        url = f'https://note.com/api/v1/text_notes/{note_id}'
+        
+        # For publishing, we try to update status. 
+        # If body is already saved, maybe we don't need to send it again?
+        # But let's send it just in case, matching the reference.
+        payload = {
+            'body': body,
+            'name': title,
+            'status': 'published'
+        }
+        
+        try:
+            response = self.session.put(url, headers=self.get_headers(), json=payload)
+            response.raise_for_status()
+            print("[DEBUG] Publish (PUT) successful.")
+            return True
+        except requests.exceptions.RequestException as e:
+            print(f"[ERROR] Publish (PUT) failed: {e}")
+            if hasattr(e, 'response') and e.response is not None:
+                print(f"[ERROR] Response: {e.response.text}")
+            return False
 
     def markdown_to_html(self, markdown_text):
         """
