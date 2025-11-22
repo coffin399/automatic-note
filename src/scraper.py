@@ -16,8 +16,9 @@ class WebScraper:
         results = []
         try:
             # Using 'text' method for standard search
-            # backend="api" is often more reliable for automated requests
-            search_results = self.ddgs.text(query, max_results=max_results)
+            # region='jp-jp' for Japanese results
+            # timelimit='d' for past day (latest news)
+            search_results = self.ddgs.text(query, region='jp-jp', timelimit='d', max_results=max_results)
             
             if search_results:
                 for r in search_results:
