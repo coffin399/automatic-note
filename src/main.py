@@ -38,7 +38,11 @@ def run_report(config, generator, uploader):
     upload_status = config.get('upload_status', 'draft')
     print(f"[INFO] Uploading to Note.com as {upload_status}...")
     
-    note_url = uploader.create_article(title, article_body, status=upload_status)
+    eyecatch_path = "eyecatch.png" if os.path.exists("eyecatch.png") else None
+    if eyecatch_path:
+        print(f"[INFO] Using eyecatch image: {eyecatch_path}")
+
+    note_url = uploader.create_article(title, article_body, status=upload_status, eyecatch_path=eyecatch_path)
     
     if note_url:
         print(f"\n[SUCCESS] Article created successfully!\nURL: {note_url}")
