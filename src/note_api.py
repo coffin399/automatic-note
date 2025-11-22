@@ -174,9 +174,7 @@ class NoteUploader:
         payload = {
             'body': body,
             'name': title,
-            'status': status,
-            'share_to_twitter': False,
-            'share_to_facebook': False
+            'status': status
         }
         
         try:
