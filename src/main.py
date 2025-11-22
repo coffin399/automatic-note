@@ -4,11 +4,10 @@ import random
 import time
 from datetime import datetime
 from config import load_config, validate_config
-from scraper import WebScraper
 from generator import GeminiGenerator
 from note_api import NoteUploader
 
-def run_report(config, scraper, generator, uploader):
+def run_report(config, generator, uploader):
     """
     Executes a single reporting cycle.
     """
@@ -18,48 +17,18 @@ def run_report(config, scraper, generator, uploader):
     genres = config.get('topic_genres', ["金融", "政治", "カルチャー", "サブカルチャー"])
     print(f"[INFO] Target Genres: {genres}")
 
-    # 4. Scrape Info for EACH Genre
-    print("[INFO] Scraping information...")
-    all_search_results = {}
-    
-    for genre in genres:
-        print(f"  - Scraping for: {genre}")
-        # Search for "Genre + News + Date/Recent"
-        results = scraper.search([genre, "ニュース", "最新"], max_results=3)
-        if results:
-            all_search_results[genre] = results
-        else:
-            print(f"    [WARN] No results for {genre}")
-            all_search_results[genre] = []
-        
-        # Be polite to search engines
-        time.sleep(1) 
-
-    if not any(all_search_results.values()):
-        print("[ERROR] No search results found for any genre. Skipping this cycle.")
-        return
-
-    # 5. Generate Content (Aggregated)
-    print("[INFO] Generating report...")
+    # 4. Generate Content (Gemini Grounding)
+    print("[INFO] Generating report with Gemini Grounding...")
     # Title format: YYYY-MM-DD 簡単レポート
     today_str = datetime.now().strftime("%Y-%m-%d")
-    # Add time to title if running multiple times a day? 
-    # User asked for "YYYY-MM-DD 簡単レポート". 
-    # If running twice, titles might duplicate. Note.com allows duplicate titles? 
-    # Or maybe append (朝刊/夕刊)? 
-    # For now, sticking to requested format. Note.com handles duplicate titles by allowing them or we might overwrite draft.
-    # Let's append time to be safe and useful: "YYYY-MM-DD 簡単レポート (08:00)"
-    current_hour = datetime.now().hour
-    time_suffix = "朝刊" if current_hour < 12 else "夕刊"
-    # However, user specifically asked for "YYYY-MM-DD 簡単レポート". 
-    # Let's stick to the requested format but maybe add a timestamp in the body?
-    # Or just use the date. If it's the same title, it creates a new note anyway.
     title = f"{today_str} 簡単レポート"
     
-    article_body = generator.generate_article(title, all_search_results)
+    article_body = generator.generate_article(genres)
     if not article_body:
         print("[ERROR] Content generation failed. Skipping this cycle.")
         return
+
+
 
     print(f"\n--- Generated Report ---\nTitle: {title}\nLength: {len(article_body)} chars\n------------------------\n")
 
@@ -90,7 +59,6 @@ def main():
         sys.exit(0)
 
     # 2. Initialize Components
-    scraper = WebScraper()
     generator = GeminiGenerator(
         api_key=config['gemini_api_key'],
         model_name=config.get('gemini_model', 'gemini-2.0-flash-exp'),
@@ -120,7 +88,7 @@ def main():
     
     # 1. Run Immediately on Startup
     print("\n[SCHEDULE] Running startup job...")
-    run_report(config, scraper, generator, uploader)
+    run_report(config, generator, uploader)
 
     # 2. Enter Scheduler Loop
     print("\n[SCHEDULE] Waiting for next scheduled time (08:00 or 20:00)...")
@@ -132,7 +100,7 @@ def main():
         
         if current_time in ["08:00", "20:00"]:
             print(f"\n[SCHEDULE] It's {current_time}! Starting scheduled job.")
-            run_report(config, scraper, generator, uploader)
+            run_report(config, generator, uploader)
             # Wait 61 seconds to ensure we don't run again in the same minute
             time.sleep(61)
         

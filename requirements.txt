@@ -1,5 +1,5 @@
 google-genai
-duckduckgo-search>=6.0
+
 requests
 pyyaml
 markdown

@@ -1,36 +1,26 @@
 from google import genai
 from google.genai import types
 
+from google import genai
+from google.genai import types
+
 class GeminiGenerator:
     def __init__(self, api_key, model_name, system_prompt):
         self.client = genai.Client(api_key=api_key)
         self.model_name = model_name
         self.system_prompt = system_prompt
 
-    def generate_article(self, title, search_results):
+    def generate_article(self, genres):
         """
-        Generates an article based on the title and aggregated search results.
-        search_results: Dict {Genre: [results]}
+        Generates a news report using Gemini with Google Search Grounding.
         """
-        print(f"[INFO] Generating content for: {title}")
+        print("[INFO] Generating report with Gemini Grounding...")
         
-        # Construct context from search results
-        context = ""
-        for genre, results in search_results.items():
-            context += f"\n## {genre}\n"
-            if results:
-                for i, res in enumerate(results, 1):
-                    context += f"{i}. {res['title']}: {res['snippet']}\n"
-            else:
-                context += "(ニュースなし)\n"
-
+        genre_list = ", ".join(genres)
         prompt = f"""
-        Title: {title}
+        今日の {genre_list} に関する最新ニュースを検索し、以下の指示に従ってレポートを作成してください。
         
-        Search Results (Context):
-        {context}
-        
-        Please generate the report based on the system instructions.
+        {self.system_prompt}
         """
 
         try:
@@ -38,11 +28,16 @@ class GeminiGenerator:
                 model=self.model_name,
                 contents=prompt,
                 config=types.GenerateContentConfig(
-                    system_instruction=self.system_prompt,
-                    temperature=0.7
+                    tools=[types.Tool(google_search=types.GoogleSearch())]
                 )
             )
-            return response.text
+            
+            if response.text:
+                return response.text
+            else:
+                print("[ERROR] No content generated.")
+                return None
+
         except Exception as e:
-            print(f"[ERROR] Gemini generation failed: {e}")
+            print(f"[ERROR] Generation failed: {e}")
             return None
