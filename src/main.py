@@ -19,9 +19,11 @@ def run_report(config, generator, uploader):
 
     # 4. Generate Content (Gemini Grounding)
     print("[INFO] Generating report with Gemini Grounding...")
-    # Title format: YYYY-MM-DD 簡単レポート
+    # Title format: YYYY-MM-DD 午前/午後レポート
     today_str = datetime.now().strftime("%Y-%m-%d")
-    title = f"{today_str} 簡単レポート"
+    current_hour = datetime.now().hour
+    period = "午前" if current_hour < 12 else "午後"
+    title = f"{today_str} {period}レポート"
     
     article_body = generator.generate_article(genres)
     if not article_body:
