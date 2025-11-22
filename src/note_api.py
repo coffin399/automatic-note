@@ -69,6 +69,8 @@ class NoteUploader:
         print(f"[INFO] Uploading article: {title} (Status: {status})")
         
         body_html = self.markdown_to_html(body_markdown)
+        print(f"[DEBUG] HTML Body Preview: {body_html[:500]}...")
+        
         url = 'https://note.com/api/v1/text_notes'
         
         payload = {

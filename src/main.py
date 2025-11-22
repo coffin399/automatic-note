@@ -30,7 +30,7 @@ def run_report(config, generator, uploader):
 
 
 
-    print(f"\n--- Generated Report ---\nTitle: {title}\nLength: {len(article_body)} chars\n------------------------\n")
+    print(f"\n--- Generated Report ---\nTitle: {title}\nLength: {len(article_body)} chars\nPreview: {article_body[:500]}...\n------------------------\n")
 
     # 6. Upload to Note
     upload_status = config.get('upload_status', 'draft')
