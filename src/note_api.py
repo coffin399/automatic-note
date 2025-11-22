@@ -75,12 +75,19 @@ class NoteUploader:
         """
         Returns standard headers for Note.com API requests.
         """
-        return {
-            'Origin': 'https://note.com',
-            'Referer': 'https://note.com/notes',
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json'
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36',
+            'Accept': '*/*',
+            'Origin': 'https://editor.note.com',
+            'Referer': 'https://editor.note.com/',
         }
+        
+        # Add XSRF-TOKEN if available
+        xsrf_token = self.session.cookies.get("XSRF-TOKEN")
+        if xsrf_token:
+            headers['X-XSRF-TOKEN'] = xsrf_token
+            
+        return headers
 
     def login(self, email, password):
         """
@@ -94,11 +101,19 @@ class NoteUploader:
         }
         
         try:
+            # Initial headers for login (Origin/Referer might need to be note.com for login?)
+            # The reference uses editor.note.com for everything, let's try that.
             response = self.session.post(url, headers=self.get_headers(), json=payload)
             response.raise_for_status()
             
             # Debug: Print all cookies
             print(f"[DEBUG] Cookies after login: {self.session.cookies.get_dict()}")
+            
+            # Verify XSRF-TOKEN
+            if "XSRF-TOKEN" in self.session.cookies:
+                print("[DEBUG] XSRF-TOKEN found.")
+            else:
+                print("[WARN] XSRF-TOKEN not found in cookies.")
 
             # Check success by response content (if 'data' exists)
             data = response.json()
@@ -115,75 +130,96 @@ class NoteUploader:
 
     def create_article(self, title, body_markdown, status='draft'):
         """
-        Creates a new article on Note.com.
+        Creates a new article on Note.com using the correct 2-step process.
         """
         print(f"[INFO] Creating article: {title} (Status: {status})")
         
         body_html = self.markdown_to_html(body_markdown)
-        print(f"[DEBUG] HTML Body Preview: {body_html[:500]}...")
         
-        url = 'https://note.com/api/v1/text_notes'
-        
-        # Try sending full body in initial POST with headers
-        payload = {
-            'name': title,
-            'body': body_html,
-            'template_key': None
-        }
+        # Step 1: Create Draft (Minimal Payload)
+        url_create = 'https://note.com/api/v1/text_notes'
+        payload_create = {"template_key": None}
         
         try:
-            # Use session to preserve cookies
-            response = self.session.post(url, headers=self.get_headers(), json=payload)
+            response = self.session.post(url_create, headers=self.get_headers(), json=payload_create)
             response.raise_for_status()
             data = response.json()
-            
-            # Debug: Print full response data to see if body was accepted
-            print(f"[DEBUG] Create Response Data: {str(data)[:500]}...")
             
             note_id = data['data']['id']
             note_key = data['data']['key']
             print(f"[INFO] Draft created. ID: {note_id}, Key: {note_key}")
-
-            if status == 'published':
-                if self.publish_article(note_id, title, body_html):
+            
+            # Step 2: Update Content & Publish (PUT)
+            # We combine update and publish into one PUT request if status is published
+            final_status = 'published' if status == 'published' else 'draft'
+            
+            if self.update_article(note_id, note_key, title, body_html, status=final_status):
+                if final_status == 'published':
                     print(f"[SUCCESS] Article published! Key: {note_key}")
                 else:
-                    print(f"[WARN] Failed to publish. Article remains as draft.")
+                    print(f"[SUCCESS] Draft saved. Key: {note_key}")
+            else:
+                print(f"[ERROR] Failed to save/publish content.")
+                return None
             
             return f"https://note.com/notes/{note_key}"
 
         except requests.exceptions.RequestException as e:
-            print(f"[ERROR] Upload failed: {e}")
+            print(f"[ERROR] Creation process failed: {e}")
             if hasattr(e, 'response') and e.response is not None:
                 print(f"[ERROR] Response: {e.response.text}")
             return None
 
-    def publish_article(self, note_id, title, body):
+    def update_article(self, note_id, note_key, title, body, status='draft'):
         """
-        Publishes a draft article.
+        Updates an existing article with full payload.
         """
-        print(f"[INFO] Publishing article (ID: {note_id})...")
+        print(f"[INFO] Updating article (ID: {note_id})...")
         url = f'https://note.com/api/v1/text_notes/{note_id}'
         
-        # For publishing, we try to update status. 
-        # If body is already saved, maybe we don't need to send it again?
-        # But let's send it just in case, matching the reference.
+        # Full payload based on GitHub30/note-mcp-server
         payload = {
-            'body': body,
-            'name': title,
-            'status': 'published'
+            "author_ids": [],
+            "body_length": len(body),
+            "disable_comment": False,
+            "exclude_from_creator_top": False,
+            "exclude_ai_learning_reward": False,
+            "free_body": body, # Correct field for body!
+            "hashtags": [], # We could pass hashtags here if we had them
+            "image_keys": [],
+            "index": False,
+            "is_refund": False,
+            "limited": False,
+            "magazine_ids": [],
+            "magazine_keys": [],
+            "name": title,
+            "pay_body": "",
+            "price": 0,
+            "send_notifications_flag": True,
+            "separator": None,
+            "slug": f"slug-{note_key}",
+            "status": status,
+            "circle_permissions": [],
+            "discount_campaigns": [],
+            "lead_form": {"is_active": False, "consent_url": ""},
+            "line_add_friend": {"is_active": False, "keyword": "", "add_friend_url": ""},
+            "line_add_friend_access_token": "",
         }
         
         try:
             response = self.session.put(url, headers=self.get_headers(), json=payload)
             response.raise_for_status()
-            print("[DEBUG] Publish (PUT) successful.")
+            print("[DEBUG] Update (PUT) successful.")
             return True
         except requests.exceptions.RequestException as e:
-            print(f"[ERROR] Publish (PUT) failed: {e}")
+            print(f"[ERROR] Update (PUT) failed: {e}")
             if hasattr(e, 'response') and e.response is not None:
                 print(f"[ERROR] Response: {e.response.text}")
             return False
+
+    def publish_article(self, note_id, title, body):
+        # Deprecated, logic moved to create_article/update_article
+        pass
 
     def markdown_to_html(self, markdown_text):
         """
