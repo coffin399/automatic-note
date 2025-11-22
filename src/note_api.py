@@ -93,7 +93,7 @@ class NoteUploader:
             print(f"[INFO] Draft created. ID: {note_id}, Key: {note_key}")
 
             if status == 'published':
-                if self.publish_article(note_key):
+                if self.publish_article(note_id, title, body_html):
                     print(f"[SUCCESS] Article published! Key: {note_key}")
                 else:
                     print(f"[WARN] Failed to publish. Article remains as draft.")
@@ -106,18 +106,21 @@ class NoteUploader:
                 print(f"[ERROR] Response: {e.response.text}")
             return None
 
-    def publish_article(self, note_key):
+    def publish_article(self, note_id, title, body):
         """
-        Publishes a draft article.
+        Publishes a draft article by updating it with status='published'.
         """
-        print(f"[INFO] Publishing article: {note_key}...")
+        print(f"[INFO] Publishing article (ID: {note_id})...")
         
-        # Try PUT to update status (Common REST pattern)
-        url = f'https://note.com/api/v1/notes/{note_key}'
+        # Use PUT to text_notes/{id} as per reference
+        url = f'https://note.com/api/v1/text_notes/{note_id}'
+        
         payload = {
-            "status": "published",
-            "share_to_twitter": False,
-            "share_to_facebook": False
+            'name': title,
+            'body': body,
+            'status': 'published',
+            'share_to_twitter': False,
+            'share_to_facebook': False
         }
         
         try:
@@ -127,12 +130,8 @@ class NoteUploader:
             return True
         except requests.exceptions.RequestException as e:
             print(f"[WARN] Publish (PUT) failed: {e}")
-            
-            # Fallback: Try /publish endpoint again (maybe with different headers?)
-            # Or maybe it's /api/v2/notes/{key}/publish?
-            # Let's try one more common guess: /api/v1/notes/{key}/publish (POST)
-            # But user said it 404'd. 
-            # Let's try to just return False for now to avoid spamming errors.
+            if hasattr(e, 'response') and e.response is not None:
+                print(f"[ERROR] Response: {e.response.text}")
             return False
 
 if __name__ == "__main__":
