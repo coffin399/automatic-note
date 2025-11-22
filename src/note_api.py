@@ -21,7 +21,7 @@ class NoteUploader:
         print(f"[INFO] Logging in as {email}...")
         url = 'https://note.com/api/v1/sessions/sign_in'
         payload = {
-            'email': email,
+            'login': email,
             'password': password
         }
         
