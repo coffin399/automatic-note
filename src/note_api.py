@@ -174,7 +174,9 @@ class NoteUploader:
         payload = {
             'body': body,
             'name': title,
-            'status': status
+            'status': status,
+            'template_key': None,
+            'eyecatch_image_key': None
         }
         
         try:
