@@ -43,6 +43,9 @@ system_prompt: |
   ## 経済・ビジネス
   ...
 
+  記事の最後には、記事の内容に関連する「いい感じのハッシュタグ」を3〜5個付けてください。
+  例: #ニュース #ビジネス #AI #最新情報
+
 
 # Note.com Upload Settings
 upload_status: "draft" # draft or published (use draft for safety)
