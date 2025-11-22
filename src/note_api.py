@@ -2,6 +2,7 @@ import requests
 import json
 import re
 import os
+import markdown
 
 class NoteUploader:
     def __init__(self, session_cookie=None):
@@ -75,6 +76,10 @@ class NoteUploader:
         """
         Uploads an image to Note.com and returns the image key.
         """
+        # FIXME: Endpoint /api/v1/files is 404. Disabling for now.
+        print(f"[WARN] Image upload is currently disabled due to API endpoint uncertainty.")
+        return None
+        
         if not os.path.exists(file_path):
             print(f"[ERROR] Image file not found: {file_path}")
             return None
@@ -208,45 +213,27 @@ class NoteUploader:
 
     def process_markdown(self, markdown_text):
         """
-        Extracts hashtags and converts Markdown to HTML for Note.com.
+        Extracts hashtags and converts Markdown to HTML using markdown library.
         """
         # 1. Extract Hashtags
         hashtags = re.findall(r'#(\S+)', markdown_text)
-        # Remove hashtag lines from the text to avoid duplication in body
+        
+        # Remove hashtag lines from the text
         lines = markdown_text.split('\n')
         cleaned_lines = []
         for line in lines:
-            if not line.strip().startswith('#') or re.match(r'^#\s', line): # Keep headers (# Header), remove tags (#Tag)
-                 if not re.match(r'^(\s*#\S+\s*)+$', line):
-                     cleaned_lines.append(line)
+            # Keep headers (# Header), remove tags (#Tag)
+            # Also check if line is ONLY hashtags
+            if re.match(r'^(\s*#\S+\s*)+$', line) and not re.match(r'^#\s', line):
+                 continue
+            cleaned_lines.append(line)
         
         cleaned_text = '\n'.join(cleaned_lines)
 
-        # 2. Convert to HTML
-        html = cleaned_text
+        # 2. Convert to HTML using markdown library
+        html = markdown.markdown(cleaned_text)
         
-        # Convert headings (### -> <h3>)
-        # Note: Adding <br> before headings to prevent overlap
-        html = re.sub(r'^### (.*$)', r'<br><h3>\1</h3>', html, flags=re.MULTILINE)
-        html = re.sub(r'^## (.*$)', r'<br><h2>\1</h2>', html, flags=re.MULTILINE)
-        html = re.sub(r'^# (.*$)', r'<br><h1>\1</h1>', html, flags=re.MULTILINE)
-        
-        # Bold (**text**)
-        html = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', html)
-        
-        # Paragraphs
-        paragraphs = html.split('\n\n')
-        html_paragraphs = []
-        for p in paragraphs:
-            p = p.strip()
-            if not p:
-                continue
-            if p.startswith('<h') or p.startswith('<br>'):
-                html_paragraphs.append(p)
-            else:
-                html_paragraphs.append(f'<p>{p}</p>')
-                
-        return hashtags, '\n'.join(html_paragraphs)
+        return hashtags, html
 
     def markdown_to_html(self, markdown_text):
         # Deprecated, use process_markdown
