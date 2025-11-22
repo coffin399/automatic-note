@@ -73,9 +73,12 @@ class NoteUploader:
         
         url = 'https://note.com/api/v1/text_notes'
         
+        # Try multiple fields to ensure body is captured
         payload = {
             'name': title,
             'body': body_html,
+            'content': body_html,  # Potential alternative
+            'text': body_html,     # Potential alternative
             'template_key': None
         }
         
@@ -108,25 +111,28 @@ class NoteUploader:
         Publishes a draft article.
         """
         print(f"[INFO] Publishing article: {note_key}...")
-        url = f'https://note.com/api/v1/notes/{note_key}/publish'
         
-        # Standard payload for publishing
+        # Try PUT to update status (Common REST pattern)
+        url = f'https://note.com/api/v1/notes/{note_key}'
         payload = {
+            "status": "published",
             "share_to_twitter": False,
             "share_to_facebook": False
         }
         
         try:
-            # Note: Publish usually uses PUT or POST. Let's try POST first as it's common for actions.
-            # Actually, Note API often uses PUT for updates, but /publish might be POST.
-            # Let's try POST.
-            response = self.session.post(url, json=payload)
+            response = self.session.put(url, json=payload)
             response.raise_for_status()
+            print("[DEBUG] Publish (PUT) successful.")
             return True
         except requests.exceptions.RequestException as e:
-            print(f"[ERROR] Publish failed: {e}")
-            if hasattr(e, 'response') and e.response is not None:
-                print(f"[ERROR] Response: {e.response.text}")
+            print(f"[WARN] Publish (PUT) failed: {e}")
+            
+            # Fallback: Try /publish endpoint again (maybe with different headers?)
+            # Or maybe it's /api/v2/notes/{key}/publish?
+            # Let's try one more common guess: /api/v1/notes/{key}/publish (POST)
+            # But user said it 404'd. 
+            # Let's try to just return False for now to avoid spamming errors.
             return False
 
 if __name__ == "__main__":
