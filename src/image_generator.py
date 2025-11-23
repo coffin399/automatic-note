@@ -1,6 +1,12 @@
 import os
 import torch
-from diffusers import StableDiffusionPipeline
+from diffusers import (
+    StableDiffusionPipeline, 
+    EulerAncestralDiscreteScheduler, 
+    EulerDiscreteScheduler, 
+    DPMSolverMultistepScheduler, 
+    DDIMScheduler
+)
 import logging
 import gc
 
@@ -9,20 +15,22 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class LocalImageGenerator:
-    def __init__(self, model_id="runwayml/stable-diffusion-v1-5", device="cpu", safety_checker=None):
+    def __init__(self, model_id="runwayml/stable-diffusion-v1-5", device="cpu", scheduler_name="Euler a", safety_checker=None):
         """
         Initializes the LocalImageGenerator.
         
         Args:
             model_id (str): The Hugging Face model ID.
             device (str): Device to run on ('cpu' or 'cuda'). Default is 'cpu' for N100.
+            scheduler_name (str): Name of the scheduler to use.
             safety_checker (bool): Whether to use the safety checker. Default None (auto-disable if possible to save RAM).
         """
         self.device = device
         self.model_id = model_id
+        self.scheduler_name = scheduler_name
         self.pipe = None
         
-        logger.info(f"Initialized LocalImageGenerator config with model: {model_id} on {device}")
+        logger.info(f"Initialized LocalImageGenerator config with model: {model_id}, scheduler: {scheduler_name} on {device}")
         # Pipeline is NOT loaded here to save memory. Call load() before use.
 
     def load(self):
@@ -54,6 +62,9 @@ class LocalImageGenerator:
                     use_safetensors=True
                 )
             
+            # Set Scheduler
+            self._set_scheduler()
+
             self.pipe.to(self.device)
             
             # Optimization for CPU/Low RAM
@@ -71,6 +82,30 @@ class LocalImageGenerator:
         except Exception as e:
             logger.error(f"Failed to load Diffusers pipeline: {e}")
             raise e
+
+    def _set_scheduler(self):
+        """Configures the scheduler based on the name."""
+        if not self.pipe:
+            return
+
+        try:
+            config = self.pipe.scheduler.config
+            if self.scheduler_name == "Euler a":
+                self.pipe.scheduler = EulerAncestralDiscreteScheduler.from_config(config)
+            elif self.scheduler_name == "Euler":
+                self.pipe.scheduler = EulerDiscreteScheduler.from_config(config)
+            elif self.scheduler_name == "DPM++ 2M Karras":
+                self.pipe.scheduler = DPMSolverMultistepScheduler.from_config(config, use_karras_sigmas=True)
+            elif self.scheduler_name == "DPM++ SDE Karras":
+                self.pipe.scheduler = DPMSolverMultistepScheduler.from_config(config, use_karras_sigmas=True, algorithm_type="sde-dpmsolver++")
+            elif self.scheduler_name == "DDIM":
+                self.pipe.scheduler = DDIMScheduler.from_config(config)
+            else:
+                logger.warning(f"Unknown scheduler '{self.scheduler_name}', using default.")
+            
+            logger.info(f"Scheduler set to: {self.scheduler_name}")
+        except Exception as e:
+            logger.error(f"Failed to set scheduler: {e}")
 
     def unload(self):
         """Unloads the pipeline and frees memory."""

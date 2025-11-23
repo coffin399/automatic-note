@@ -63,6 +63,7 @@ upload_status: "draft" # draft or published (use draft for safety)
 image_generation:
   enabled: false #falseにするとeyecatchフォルダからランダムで選ばれる,trueにすると見出し画像を生成AIが新規作成します。
   provider: "local" # local
+  scheduler: "Euler a"
   device: "cpu" # "cpu" or "cuda" (NVIDIA GPU) cudaにすると爆速で画像を生成します。GPUが必須です。CPUが非力な場合30分かかる場合があります
   model_id: "models/shiitakeMix_v20.safetensors" # Path to local model file or HF ID
   steps: 20

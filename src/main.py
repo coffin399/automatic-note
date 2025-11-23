@@ -163,10 +163,12 @@ def main():
         if LocalImageGenerator:
             try:
                 device = img_config.get('device', 'cpu')
-                print(f"[INIT] Initializing Local Image Generator config (Model: {img_config.get('model_id')}, Device: {device})...")
+                scheduler = img_config.get('scheduler', 'Euler a')
+                print(f"[INIT] Initializing Local Image Generator config (Model: {img_config.get('model_id')}, Device: {device}, Scheduler: {scheduler})...")
                 image_generator = LocalImageGenerator(
                     model_id=img_config.get('model_id', "runwayml/stable-diffusion-v1-5"),
-                    device=device
+                    device=device,
+                    scheduler_name=scheduler
                 )
             except Exception as e:
                 print(f"[ERROR] Failed to initialize image generator: {e}")
