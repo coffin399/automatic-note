@@ -41,3 +41,36 @@ class GeminiGenerator:
         except Exception as e:
             print(f"[ERROR] Generation failed: {e}")
             return None
+
+    def generate_image_prompt(self, article_content):
+        """
+        Generates a prompt for Stable Diffusion based on the article content.
+        """
+        print("[INFO] Generating image prompt...")
+        prompt = f"""
+        以下の記事の内容を元に、AI画像生成(Stable Diffusion)のための英語のプロンプトを作成してください。
+        
+        【記事内容】
+        {article_content[:1000]}... (省略)
+        
+        【指示】
+        - 記事のトピックを象徴する、抽象的または具体的なシーンを描写してください。
+        - 英語で出力してください。
+        - カンマ区切りのキーワード羅列形式で出力してください。
+        - 余計な説明や「Here is the prompt:」などの前置きは一切不要です。プロンプトのみを出力してください。
+        - 例: futuristic city, cyberpunk, neon lights, high quality, 4k, detailed
+        """
+        
+        try:
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=prompt
+            )
+            
+            if response.text:
+                return response.text.strip()
+            else:
+                return "abstract news background, digital art, high quality"
+        except Exception as e:
+            print(f"[ERROR] Image prompt generation failed: {e}")
+            return "abstract news background, digital art, high quality"

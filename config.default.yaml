@@ -55,3 +55,21 @@ system_prompt: |
 
 # Note.com Upload Settings
 upload_status: "draft" # draft or published (use draft for safety)
+
+# Image Generation Settings
+image_generation:
+  enabled: true #falseにするとeyecatchフォルダからランダムで選ばれる,trueにすると見出し画像を新規作成します。
+  provider: "local" # local
+  device: "cpu" # "cpu" or "cuda" (NVIDIA GPU) cudaにすると爆速で画像を生成します。GPUが必須です。CPUが非力な場合30分かかる場合があります
+  model_id: "models/ShiitakeMix.safetensors" # Path to local model file or HF ID
+  steps: 20
+  width: 1920
+  height: 1006
+  negative_prompt: "(bad quality,worst quality,low quality,bad anatomy,bad hand:1.3), nsfw, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, artist name"
+  
+  # Prompt Settings
+  use_article_context: true # If true, appends AI-generated keywords from the article to the prompt
+  prompts: # If provided, one of these will be selected randomly as the base prompt
+    - "masterpiece, best quality, 1girl, solo, looking at viewer, detailed background, cinematic lighting"
+    - "scenery, landscape, beautiful light, 4k, high resolution, detailed"
+    - "cyberpunk city, neon lights, futuristic, detailed, 8k"

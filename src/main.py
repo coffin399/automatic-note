@@ -6,8 +6,12 @@ from datetime import datetime
 from config import load_config, validate_config
 from generator import GeminiGenerator
 from note_api import NoteUploader
+try:
+    from image_generator import LocalImageGenerator
+except ImportError:
+    LocalImageGenerator = None
 
-def run_report(config, generator, uploader):
+def run_report(config, generator, uploader, image_generator=None):
     """
     Executes a single reporting cycle.
     """
@@ -38,18 +42,65 @@ def run_report(config, generator, uploader):
     
     # Determine eyecatch image
     eyecatch_path = None
-    eyecatch_dir = "eyecatch"
     
-    # Priority 1: Random image from 'eyecatch' folder
-    if os.path.exists(eyecatch_dir) and os.path.isdir(eyecatch_dir):
-        images = [
-            os.path.join(eyecatch_dir, f) 
-            for f in os.listdir(eyecatch_dir) 
-            if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))
-        ]
-        if images:
-            eyecatch_path = random.choice(images)
-            print(f"[INFO] Selected random eyecatch image: {eyecatch_path}")
+    # Priority 0: Generate Image (if enabled)
+    img_config = config.get('image_generation', {})
+    if img_config.get('enabled', False) and image_generator:
+        print("[INFO] Attempting to generate eyecatch image...")
+        
+        # Determine Prompt
+        base_prompt = ""
+        prompts_list = img_config.get('prompts', [])
+        if prompts_list:
+            base_prompt = random.choice(prompts_list)
+            print(f"[INFO] Selected base prompt: {base_prompt}")
+            
+        context_prompt = ""
+        if img_config.get('use_article_context', True):
+            context_prompt = generator.generate_image_prompt(article_body)
+            print(f"[INFO] Generated context prompt: {context_prompt}")
+            
+        # Combine prompts
+        if base_prompt and context_prompt:
+            image_prompt = f"{base_prompt}, {context_prompt}"
+        elif base_prompt:
+            image_prompt = base_prompt
+        else:
+            image_prompt = context_prompt
+            
+        print(f"[INFO] Final Image Prompt: {image_prompt}")
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"generated_{timestamp}.png"
+        output_path = os.path.join("eyecatch", "generated", output_filename)
+        
+        generated_path = image_generator.generate(
+            prompt=image_prompt,
+            output_path=output_path,
+            negative_prompt=img_config.get('negative_prompt'),
+            width=img_config.get('width', 512),
+            height=img_config.get('height', 512),
+            num_inference_steps=img_config.get('steps', 20)
+        )
+        
+        if generated_path:
+            eyecatch_path = generated_path
+            print(f"[SUCCESS] Generated image: {eyecatch_path}")
+        else:
+            print("[WARN] Image generation failed. Falling back to local files.")
+
+    # Priority 1: Random image from 'eyecatch' folder (Fallback)
+    if not eyecatch_path:
+        eyecatch_dir = "eyecatch"
+        if os.path.exists(eyecatch_dir) and os.path.isdir(eyecatch_dir):
+            images = [
+                os.path.join(eyecatch_dir, f) 
+                for f in os.listdir(eyecatch_dir) 
+                if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')) and "generated" not in f
+            ]
+            if images:
+                eyecatch_path = random.choice(images)
+                print(f"[INFO] Selected random eyecatch image: {eyecatch_path}")
     
     # Priority 2: Root eyecatch.png (Fallback)
     if not eyecatch_path and os.path.exists("eyecatch.png"):
@@ -85,6 +136,23 @@ def main():
         system_prompt=config['system_prompt']
     )
     
+    # Initialize Image Generator if enabled
+    image_generator = None
+    img_config = config.get('image_generation', {})
+    if img_config.get('enabled', False):
+        if LocalImageGenerator:
+            try:
+                device = img_config.get('device', 'cpu')
+                print(f"[INIT] Loading Local Image Generator on {device}...")
+                image_generator = LocalImageGenerator(
+                    model_id=img_config.get('model_id', "runwayml/stable-diffusion-v1-5"),
+                    device=device
+                )
+            except Exception as e:
+                print(f"[ERROR] Failed to initialize image generator: {e}")
+        else:
+            print("[WARN] LocalImageGenerator not found. Please install requirements.")
+
     # Handle Note Auth
     session_cookie = config.get('note_session_cookie')
     if session_cookie and not session_cookie.startswith("YOUR_"):
@@ -108,7 +176,7 @@ def main():
     
     # 1. Run Immediately on Startup
     print("\n[SCHEDULE] Running startup job...")
-    run_report(config, generator, uploader)
+    run_report(config, generator, uploader, image_generator)
 
     # 2. Enter Scheduler Loop
     schedule_times = config.get('schedule_times', ["08:00", "20:00"])
@@ -121,7 +189,7 @@ def main():
         
         if current_time in schedule_times:
             print(f"\n[SCHEDULE] It's {current_time}! Starting scheduled job.")
-            run_report(config, generator, uploader)
+            run_report(config, generator, uploader, image_generator)
             # Wait 61 seconds to ensure we don't run again in the same minute
             time.sleep(61)
         

@@ -5,3 +5,11 @@ pyyaml
 markdown
 selenium
 webdriver-manager
+torch
+diffusers
+transformers
+accelerate
+scipy
+ftfy
+safetensors
+omegaconf
