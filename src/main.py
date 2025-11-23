@@ -11,10 +11,32 @@ try:
 except ImportError:
     LocalImageGenerator = None
 
+def process_config_placeholders(config):
+    """
+    Recursively replaces placeholders in the config dictionary.
+    Supported placeholders:
+    - {current_time}: Replaced with current timestamp (YYYY-MM-DD-HH-mm)
+    """
+    if isinstance(config, dict):
+        return {k: process_config_placeholders(v) for k, v in config.items()}
+    elif isinstance(config, list):
+        return [process_config_placeholders(v) for v in config]
+    elif isinstance(config, str):
+        if "{current_time}" in config:
+            # Format: YYYY-MM-DD-HH-mm
+            timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M")
+            return config.replace("{current_time}", timestamp)
+        return config
+    else:
+        return config
+
 def run_report(config, generator, uploader, image_generator=None):
     """
     Executes a single reporting cycle.
     """
+    # Process placeholders in config
+    config = process_config_placeholders(config)
+    
     print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Starting report generation cycle...")
 
     # 3. Determine Topics (Genres)
