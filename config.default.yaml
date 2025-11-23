@@ -68,7 +68,7 @@ image_generation:
   model_id: "models/shiitakeMix_v20.safetensors" # Path to local model file or HF ID
   steps: 20
   width: 1280
-  height: 670
+  height: 672
   negative_prompt: "(bad quality,worst quality,low quality,bad anatomy,bad hand:1.3), nsfw, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, artist name"
   
   # Prompt Settings

@@ -130,7 +130,11 @@ class LocalImageGenerator:
             self.load()
             loaded_here = True
             
-        logger.info(f"Generating image for prompt: '{prompt}'")
+        # Ensure dimensions are multiples of 8
+        width = (width // 8) * 8
+        height = (height // 8) * 8
+        
+        logger.info(f"Generating image for prompt: '{prompt}' (Size: {width}x{height})")
         try:
             image = self.pipe(
                 prompt=prompt,
