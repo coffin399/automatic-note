@@ -66,6 +66,99 @@ class NoteUploader:
                 return True
             else:
                 print("[ERROR] Login response did not contain expected user data.")
+                return False
+                
+        except requests.exceptions.RequestException as e:
+            print(f"[ERROR] Login failed: {e}")
+            return False
+
+    def upload_image(self, file_path, note_id):
+        """
+        Uploads an eyecatch image to Note.com for a specific note.
+        """
+        if not os.path.exists(file_path):
+            print(f"[ERROR] Image file not found: {file_path}")
+            return None
+
+        print(f"[INFO] Uploading eyecatch image for note_id {note_id}: {file_path}")
+        url = 'https://note.com/api/v1/image_upload/note_eyecatch'
+        
+        try:
+            with open(file_path, 'rb') as f:
+                files = {'file': (os.path.basename(file_path), f, 'image/png')}
+                data = {'note_id': note_id}
+                
+                # Use Origin: note.com as verified
+                headers = self.get_headers()
+                headers['Origin'] = 'https://note.com'
+                headers['Referer'] = f'https://editor.note.com/notes/{note_id}/edit'
+                if 'Content-Type' in headers:
+                    del headers['Content-Type']
+                
+                response = self.session.post(url, headers=headers, files=files, data=data)
+                response.raise_for_status()
+                
+                data = response.json()
+                if 'data' in data and 'url' in data['data']:
+                    image_url = data['data']['url']
+                    print(f"[SUCCESS] Image uploaded. URL: {image_url}")
+                    return image_url
+                else:
+                    print(f"[ERROR] Unexpected upload response: {data}")
+                    return None
+                    
+        except requests.exceptions.RequestException as e:
+            print(f"[ERROR] Image upload failed: {e}")
+            if hasattr(e, 'response') and e.response is not None:
+                print(f"[ERROR] Response: {e.response.text}")
+            return None
+
+    def create_article(self, title, body_markdown, status='draft', eyecatch_path=None):
+        """
+        Creates a new article on Note.com using the correct 2-step process.
+        """
+        print(f"[INFO] Creating article: {title} (Status: {status})")
+        
+        # Extract hashtags and convert body
+        hashtags, body_html = self.process_markdown(body_markdown)
+        
+        # Step 1: Create Draft (Minimal Payload) to get note_id
+        url_create = 'https://note.com/api/v1/text_notes'
+        payload_create = {"template_key": None}
+        
+        try:
+            response = self.session.post(url_create, headers=self.get_headers(), json=payload_create)
+            response.raise_for_status()
+            data = response.json()
+            
+            note_id = data['data']['id']
+            note_key = data['data']['key']
+            print(f"[INFO] Draft created. ID: {note_id}, Key: {note_key}")
+            
+            # Step 2: Upload Eyecatch if provided (Now that we have note_id)
+            eyecatch_key = None
+            if eyecatch_path:
+                # Note: The upload endpoint returns a URL. 
+                # We assume the upload associates the image with the note automatically.
+                # However, update_article might need the key.
+                # The key is usually part of the URL or returned.
+                # But based on user's log, we only got URL.
+                # Let's try to pass the URL as key? No, key is usually a hash.
+                # If we don't pass eyecatch_key to update_article, maybe it stays?
+                # Let's try passing None for eyecatch_key first.
+                self.upload_image(eyecatch_path, note_id)
+            
+            # Step 3: Update Draft with Content
+            # We combine update and publish into one PUT request if status is published
+            final_status = 'published' if status == 'published' else 'draft'
+            
+            if self.update_article(note_id, note_key, title, body_html, hashtags, status=final_status, eyecatch_key=eyecatch_key):
+                if final_status == 'published':
+                    print(f"[SUCCESS] Article published! Key: {note_key}")
+                else:
+                    print(f"[SUCCESS] Draft saved. Key: {note_key}")
+            else:
+                print(f"[ERROR] Failed to save/publish content.")
                 return None
             
             return f"https://note.com/notes/{note_key}"
