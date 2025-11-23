@@ -28,25 +28,6 @@ def run_report(config, generator, uploader):
     article_body = generator.generate_article(genres)
     if not article_body:
         print("[ERROR] Content generation failed. Skipping this cycle.")
-        return
-
-
-
-    print(f"\n--- Generated Report ---\nTitle: {title}\nLength: {len(article_body)} chars\nPreview: {article_body[:500]}...\n------------------------\n")
-
-    # 6. Upload to Note
-    upload_status = config.get('upload_status', 'draft')
-    print(f"[INFO] Uploading to Note.com as {upload_status}...")
-    
-    eyecatch_path = "eyecatch.png" if os.path.exists("eyecatch.png") else None
-    if eyecatch_path:
-        print(f"[INFO] Using eyecatch image: {eyecatch_path}")
-
-    note_url = uploader.create_article(title, article_body, status=upload_status, eyecatch_path=eyecatch_path)
-    
-    if note_url:
-        print(f"\n[SUCCESS] Article created successfully!\nURL: {note_url}")
-    else:
         print("\n[ERROR] Failed to create article.")
 
 def main():
