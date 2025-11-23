@@ -3,3 +3,5 @@ google-genai
 requests
 pyyaml
 markdown
+selenium
+webdriver-manager
