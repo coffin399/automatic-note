@@ -37,17 +37,15 @@ def test_upload():
         return
 
     endpoints = [
-        "https://note.com/api/v1/upload_image",
-        "https://note.com/api/v1/files",
         "https://editor.note.com/api/v1/files",
         "https://editor.note.com/api/v1/upload_image",
-        "https://note.com/api/v2/files",
-        "https://note.com/api/v3/files",
-        "https://note.com/api/v1/assets"
+        "https://note.com/api/v1/files",
+        "https://note.com/api/v1/upload_image"
     ]
     
     headers = uploader.get_headers()
-    # Remove Content-Type if it exists, requests adds it for files
+    headers['X-Requested-With'] = 'XMLHttpRequest'
+    # Remove Content-Type if it exists
     if 'Content-Type' in headers:
         del headers['Content-Type']
 
@@ -64,6 +62,8 @@ def test_upload():
                     print(f"SUCCESS! Endpoint: {url} (Key: 'file')")
                     print(f"Response: {response.text[:200]}")
                     return
+                elif response.status_code == 403:
+                    print(f"    Headers: {response.headers}")
 
                 # Variant 2: 'resource' key
                 f.seek(0)
