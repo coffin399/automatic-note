@@ -16,6 +16,9 @@ note_session_cookie: "YOUR_NOTE_SESSION_COOKIE"
 note_email: ""
 note_password: ""
 
+#検索を行うか否か、
+use_search: true # true: Google検索を使用(ニュース等), false: 検索なし(エッセイ等)
+
 # Target Audience & Topic
 target_audience: "一般のニュース読者"
 topic_genres: 

@@ -2,6 +2,7 @@ import os
 import torch
 from diffusers import StableDiffusionPipeline
 import logging
+import gc
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -10,7 +11,7 @@ logger = logging.getLogger(__name__)
 class LocalImageGenerator:
     def __init__(self, model_id="runwayml/stable-diffusion-v1-5", device="cpu", safety_checker=None):
         """
-        Initializes the LocalImageGenerator with a Diffusers pipeline.
+        Initializes the LocalImageGenerator.
         
         Args:
             model_id (str): The Hugging Face model ID.
@@ -21,10 +22,16 @@ class LocalImageGenerator:
         self.model_id = model_id
         self.pipe = None
         
-        logger.info(f"Initializing LocalImageGenerator with model: {model_id} on {device}")
-        self._load_pipeline()
+        logger.info(f"Initialized LocalImageGenerator config with model: {model_id} on {device}")
+        # Pipeline is NOT loaded here to save memory. Call load() before use.
 
-    def _load_pipeline(self):
+    def load(self):
+        """Loads the pipeline into memory."""
+        if self.pipe is not None:
+            logger.info("Pipeline already loaded.")
+            return
+
+        logger.info(f"Loading pipeline for {self.model_id}...")
         try:
             # Determine dtype based on device
             torch_dtype = torch.float16 if self.device == "cuda" else torch.float32
@@ -59,33 +66,34 @@ class LocalImageGenerator:
                 # self.pipe.enable_xformers_memory_efficient_attention()
                 pass
             
-            # Disable safety checker to save RAM/Time if requested (optional)
-            # self.pipe.safety_checker = None 
-            
             logger.info("Pipeline loaded successfully.")
             
         except Exception as e:
             logger.error(f"Failed to load Diffusers pipeline: {e}")
             raise e
 
+    def unload(self):
+        """Unloads the pipeline and frees memory."""
+        if self.pipe is not None:
+            logger.info("Unloading pipeline...")
+            del self.pipe
+            self.pipe = None
+            
+            if self.device == "cuda":
+                torch.cuda.empty_cache()
+            
+            gc.collect()
+            logger.info("Pipeline unloaded and memory cleaned up.")
+
     def generate(self, prompt, output_path, negative_prompt=None, width=512, height=512, num_inference_steps=20):
         """
         Generates an image from a prompt and saves it.
-        
-        Args:
-            prompt (str): The positive prompt.
-            output_path (str): Path to save the generated image.
-            negative_prompt (str): The negative prompt.
-            width (int): Image width.
-            height (int): Image height.
-            num_inference_steps (int): Number of denoising steps.
-            
-        Returns:
-            str: The path to the generated image, or None if failed.
         """
-        if not self.pipe:
-            logger.error("Pipeline is not loaded.")
-            return None
+        # Auto-load if not loaded
+        loaded_here = False
+        if self.pipe is None:
+            self.load()
+            loaded_here = True
             
         logger.info(f"Generating image for prompt: '{prompt}'")
         try:
@@ -102,10 +110,18 @@ class LocalImageGenerator:
             
             image.save(output_path)
             logger.info(f"Image saved to {output_path}")
+            
+            # Auto-unload if we loaded it just for this generation
+            if loaded_here:
+                self.unload()
+                
             return output_path
             
         except Exception as e:
             logger.error(f"Image generation failed: {e}")
+            # Ensure unload on error if we loaded it here
+            if loaded_here:
+                self.unload()
             return None
 
 if __name__ == "__main__":

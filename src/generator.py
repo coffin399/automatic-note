@@ -5,30 +5,40 @@ from google import genai
 from google.genai import types
 
 class GeminiGenerator:
-    def __init__(self, api_key, model_name, system_prompt):
+    def __init__(self, api_key, model_name, system_prompt, use_search=True):
         self.client = genai.Client(api_key=api_key)
         self.model_name = model_name
         self.system_prompt = system_prompt
+        self.use_search = use_search
 
     def generate_article(self, genres):
         """
         Generates a news report using Gemini with Google Search Grounding.
         """
-        print("[INFO] Generating report with Gemini Grounding...")
-        
-        genre_list = ", ".join(genres)
-        prompt = f"""
-        今日の {genre_list} に関する最新ニュースを検索し、以下の指示に従ってレポートを作成してください。
-        
-        {self.system_prompt}
-        """
+        if self.use_search:
+            print("[INFO] Generating report with Gemini Grounding...")
+            prompt = f"""
+            今日の {", ".join(genres)} に関する最新ニュースを検索し、以下の指示に従ってレポートを作成してください。
+            
+            {self.system_prompt}
+            """
+            tools = [types.Tool(google_search=types.GoogleSearch())]
+        else:
+            print("[INFO] Generating report (No Search)...")
+            prompt = f"""
+            以下の指示に従って記事を作成してください。
+            テーマ: {", ".join(genres)}
+            
+            {self.system_prompt}
+            """
+            tools = None
 
         try:
             response = self.client.models.generate_content(
                 model=self.model_name,
                 contents=prompt,
                 config=types.GenerateContentConfig(
-                    tools=[types.Tool(google_search=types.GoogleSearch())]
+                    tools=tools
                 )
             )
             

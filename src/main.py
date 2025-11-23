@@ -133,7 +133,8 @@ def main():
     generator = GeminiGenerator(
         api_key=config['gemini_api_key'],
         model_name=config.get('gemini_model', 'gemini-2.0-flash-exp'),
-        system_prompt=config['system_prompt']
+        system_prompt=config['system_prompt'],
+        use_search=config.get('use_search', True)
     )
     
     # Initialize Image Generator if enabled
@@ -143,7 +144,7 @@ def main():
         if LocalImageGenerator:
             try:
                 device = img_config.get('device', 'cpu')
-                print(f"[INIT] Loading Local Image Generator on {device}...")
+                print(f"[INIT] Initializing Local Image Generator config (Model: {img_config.get('model_id')}, Device: {device})...")
                 image_generator = LocalImageGenerator(
                     model_id=img_config.get('model_id', "runwayml/stable-diffusion-v1-5"),
                     device=device
