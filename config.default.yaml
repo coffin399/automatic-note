@@ -66,8 +66,8 @@ image_generation:
   enabled: false #falseにするとeyecatchフォルダからランダムで選ばれる,trueにすると見出し画像を生成AIが新規作成します。
   provider: "local" # local
   scheduler: "Euler a"
-  device: "cpu" # "cpu" or "cuda" (NVIDIA GPU) cudaにすると爆速で画像を生成します。GPUが必須です。CPUが非力な場合30分かかる場合があります
-  model_id: "models/shiitakeMix_v20.safetensors" # Path to local model file or HF ID
+  device: "cpu" # "cpu" or "cuda" (NVIDIA GPU) cudaにすると爆速で画像を生成します。GPUが必須です。install_gpu_tortch.batを起動してください。CPUの場合、RAM等が非力な場合30分かかる場合があります
+  model_id: "models/shiitakeMix_v20.safetensors" # 新たにmodelsフォルダを作ってその配下にモデルファイルを置いてください。パスを書き換えてください。
   steps: 20
   width: 1280
   height: 672
