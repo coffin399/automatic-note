@@ -77,6 +77,15 @@ class LocalImageGenerator:
             # Set Scheduler
             self._set_scheduler()
 
+            # Fix for "TypeError: argument of type 'NoneType' is not iterable"
+            # Some models (like shiitakeMix) might be loaded with an SDXL-like config (addition_embed_type="text_time")
+            # even when used in a standard StableDiffusionPipeline. This causes the UNet to expect 'added_cond_kwargs'
+            # which are not provided by the standard pipeline. We force it to None here.
+            if hasattr(self.pipe, "unet") and hasattr(self.pipe.unet, "config"):
+                if getattr(self.pipe.unet.config, "addition_embed_type", None) is not None:
+                    logger.warning(f"Found addition_embed_type='{self.pipe.unet.config.addition_embed_type}' in UNet config. Forcing to None to avoid errors in SD1.5 pipeline.")
+                    self.pipe.unet.config.addition_embed_type = None
+
             self.pipe.to(self.device)
             
             # Optimization for CPU/Low RAM
