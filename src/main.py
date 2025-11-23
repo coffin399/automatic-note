@@ -34,6 +34,25 @@ def run_report(config, generator, uploader, image_generator=None):
         print("[ERROR] Content generation failed. Skipping this cycle.")
         return
 
+    # Extract Title from Article Body (First Line)
+    lines = article_body.strip().split('\n')
+    if lines and len(lines) > 0:
+        candidate_title = lines[0].strip()
+        # Simple heuristic: If it's short and doesn't start with Markdown headers (unless it's the title header)
+        # Remove common prefixes like "タイトル:" if present
+        clean_title = candidate_title.replace("タイトル:", "").replace("Title:", "").strip()
+        
+        if len(clean_title) < 100: # Assuming titles aren't super long
+            title = clean_title
+            # Remove the title from the body to avoid duplication, 
+            # but keep it if it was a markdown header so the body structure remains valid?
+            # Actually, Note.com title is separate field. So we should remove it from body if it's just the title.
+            # If the AI formatted it as "# Title", we remove that line.
+            article_body = "\n".join(lines[1:]).strip()
+            print(f"[INFO] Extracted AI Title: {title}")
+        else:
+             print(f"[INFO] First line too long for title, using default: {title}")
+
     print(f"\n--- Generated Report ---\nTitle: {title}\nLength: {len(article_body)} chars\nPreview: {article_body[:500]}...\n------------------------\n")
 
     # 6. Upload to Note.com
