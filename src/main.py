@@ -40,7 +40,9 @@ def run_report(config, generator, uploader, image_generator=None):
         candidate_title = lines[0].strip()
         # Simple heuristic: If it's short and doesn't start with Markdown headers (unless it's the title header)
         # Remove common prefixes like "タイトル:" if present
-        clean_title = candidate_title.replace("タイトル:", "").replace("Title:", "").strip()
+        clean_title = candidate_title.replace("タイトル:", "").replace("Title:", "")
+        # Remove markdown header markers (###) and leading/trailing whitespace
+        clean_title = clean_title.replace("#", "").strip()
         
         if len(clean_title) < 100: # Assuming titles aren't super long
             title = clean_title

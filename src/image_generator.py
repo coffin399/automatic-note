@@ -9,6 +9,7 @@ from diffusers import (
 )
 import logging
 import gc
+import traceback
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -28,6 +29,7 @@ class LocalImageGenerator:
         self.device = device
         self.model_id = model_id
         self.scheduler_name = scheduler_name
+        self.safety_checker = safety_checker
         self.pipe = None
         
         logger.info(f"Initialized LocalImageGenerator config with model: {model_id}, scheduler: {scheduler_name} on {device}")
@@ -44,22 +46,32 @@ class LocalImageGenerator:
             # Determine dtype based on device
             torch_dtype = torch.float16 if self.device == "cuda" else torch.float32
             
+            # Prepare kwargs
+            kwargs = {
+                "torch_dtype": torch_dtype,
+                "use_safetensors": True,
+            }
+            
+            # Handle safety checker explicitly if provided
+            if self.safety_checker is not None:
+                kwargs["safety_checker"] = self.safety_checker
+                if self.safety_checker is None: # Explicitly disabled
+                    kwargs["requires_safety_checker"] = False
+
             # Load the pipeline
             # Check if model_id is a local file (safetensors/ckpt)
             if os.path.isfile(self.model_id) or self.model_id.endswith((".safetensors", ".ckpt")):
                 logger.info(f"Loading from single file: {self.model_id} ({torch_dtype})")
                 self.pipe = StableDiffusionPipeline.from_single_file(
                     self.model_id,
-                    torch_dtype=torch_dtype,
-                    use_safetensors=True
+                    **kwargs
                 )
             else:
                 # Load from folder or Hugging Face ID
                 logger.info(f"Loading from pretrained (folder/HF): {self.model_id} ({torch_dtype})")
                 self.pipe = StableDiffusionPipeline.from_pretrained(
                     self.model_id,
-                    torch_dtype=torch_dtype,
-                    use_safetensors=True
+                    **kwargs
                 )
             
             # Set Scheduler
@@ -81,6 +93,7 @@ class LocalImageGenerator:
             
         except Exception as e:
             logger.error(f"Failed to load Diffusers pipeline: {e}")
+            logger.error(traceback.format_exc())
             raise e
 
     def _set_scheduler(self):
@@ -134,7 +147,16 @@ class LocalImageGenerator:
         width = (width // 8) * 8
         height = (height // 8) * 8
         
-        logger.info(f"Generating image for prompt: '{prompt}' (Size: {width}x{height})")
+        # Sanitize inputs
+        if negative_prompt is None:
+            negative_prompt = ""
+            
+        # Truncate prompt to avoid tokenizer warnings/errors (approx 77 tokens ~ 300 chars is safe limit usually)
+        # But let's just ensure it's not None.
+        if prompt is None:
+            prompt = ""
+            
+        logger.info(f"Generating image for prompt: '{prompt[:100]}...' (Size: {width}x{height})")
         try:
             image = self.pipe(
                 prompt=prompt,
@@ -158,6 +180,7 @@ class LocalImageGenerator:
             
         except Exception as e:
             logger.error(f"Image generation failed: {e}")
+            logger.error(traceback.format_exc())
             # Ensure unload on error if we loaded it here
             if loaded_here:
                 self.unload()
