@@ -40,12 +40,26 @@ def analyze_upload():
         
         # Login
         print("[INFO] Logging in...")
-        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.NAME, "login")))
-        driver.find_element(By.NAME, "login").send_keys(email)
-        driver.find_element(By.NAME, "password").send_keys(password)
-        driver.find_element(By.CSS_SELECTOR, "button[data-type='primary']").click()
-        
-        # Wait for login to complete (check for URL change or element)
+        try:
+            # Try multiple selectors for email
+            email_input = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "input[name='login'], input[type='email']"))
+            )
+            email_input.send_keys(email)
+            
+            password_input = driver.find_element(By.CSS_SELECTOR, "input[name='password'], input[type='password']")
+            password_input.send_keys(password)
+            
+            submit_btn = driver.find_element(By.CSS_SELECTOR, "button[data-type='primary'], button[type='submit']")
+            submit_btn.click()
+        except Exception as e:
+            print(f"[ERROR] Login element not found: {e}")
+            driver.save_screenshot("login_error.png")
+            with open("login_error.html", "w", encoding="utf-8") as f:
+                f.write(driver.page_source)
+            return
+
+        # Wait for login to complete
         time.sleep(5)
         print("[INFO] Login submitted. Waiting...")
         
@@ -54,10 +68,7 @@ def analyze_upload():
         driver.get("https://note.com/notes/new")
         time.sleep(5)
         
-        # Find file input for eyecatch or image
-        # Note: The editor might be complex. Let's look for any file input.
-        # Usually hidden file input.
-        
+        # Find file input
         image_path = os.path.abspath("eyecatch.png")
         if not os.path.exists(image_path):
             print("[ERROR] eyecatch.png not found")
@@ -65,21 +76,17 @@ def analyze_upload():
 
         print(f"[INFO] Attempting to upload {image_path}...")
         
-        # Try to find the file input. 
-        # Strategy: Inject a file input if needed, or find the existing one.
-        # Note editor usually has a button that triggers a hidden file input.
-        # Let's try to find input[type='file']
-        
-        file_inputs = driver.find_elements(By.CSS_SELECTOR, "input[type='file']")
-        if not file_inputs:
-            print("[ERROR] No file input found.")
+        try:
+            # Try to find any file input
+            file_input = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "input[type='file']"))
+            )
+            file_input.send_keys(image_path)
+            print("[INFO] File sent to input. Waiting for network traffic...")
+        except Exception as e:
+            print(f"[ERROR] File input not found: {e}")
+            driver.save_screenshot("editor_error.png")
             return
-            
-        # Send keys to the first file input (often the one for header or body image)
-        # We might need to be specific. The header image input is often distinct.
-        # Let's try the first one found.
-        file_inputs[0].send_keys(image_path)
-        print("[INFO] File sent to input. Waiting for network traffic...")
         
         time.sleep(10) # Wait for upload
         
@@ -110,6 +117,8 @@ def analyze_upload():
 
     except Exception as e:
         print(f"[ERROR] Analysis failed: {e}")
+        import traceback
+        traceback.print_exc()
     finally:
         driver.quit()
 
