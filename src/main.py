@@ -28,6 +28,39 @@ def run_report(config, generator, uploader):
     article_body = generator.generate_article(genres)
     if not article_body:
         print("[ERROR] Content generation failed. Skipping this cycle.")
+        return
+
+    print(f"\n--- Generated Report ---\nTitle: {title}\nLength: {len(article_body)} chars\nPreview: {article_body[:500]}...\n------------------------\n")
+
+    # 6. Upload to Note.com
+    upload_status = config.get('upload_status', 'draft')
+    print(f"[INFO] Uploading to Note.com as {upload_status}...")
+    
+    # Determine eyecatch image
+    eyecatch_path = None
+    eyecatch_dir = "eyecatch"
+    
+    # Priority 1: Random image from 'eyecatch' folder
+    if os.path.exists(eyecatch_dir) and os.path.isdir(eyecatch_dir):
+        images = [
+            os.path.join(eyecatch_dir, f) 
+            for f in os.listdir(eyecatch_dir) 
+            if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))
+        ]
+        if images:
+            eyecatch_path = random.choice(images)
+            print(f"[INFO] Selected random eyecatch image: {eyecatch_path}")
+    
+    # Priority 2: Root eyecatch.png (Fallback)
+    if not eyecatch_path and os.path.exists("eyecatch.png"):
+        eyecatch_path = "eyecatch.png"
+        print(f"[INFO] Using default eyecatch image: {eyecatch_path}")
+
+    note_url = uploader.create_article(title, article_body, status=upload_status, eyecatch_path=eyecatch_path)
+    
+    if note_url:
+        print(f"\n[SUCCESS] Article created successfully!\nURL: {note_url}")
+    else:
         print("\n[ERROR] Failed to create article.")
 
 def main():
