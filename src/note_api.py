@@ -76,25 +76,23 @@ class NoteUploader:
         """
         Uploads an image to Note.com and returns the image key.
         """
-        # FIXME: Endpoint /api/v1/files is 404. Disabling for now.
-        print(f"[WARN] Image upload is currently disabled due to API endpoint uncertainty.")
-        return None
-        
         if not os.path.exists(file_path):
             print(f"[ERROR] Image file not found: {file_path}")
             return None
 
         print(f"[INFO] Uploading image: {file_path}")
-        url = 'https://note.com/api/v1/files'
+        # Endpoint from article: https://note.com/taku_sid/n/n1b1b7894e28f
+        url = 'https://note.com/api/v1/upload_image'
         
         try:
             with open(file_path, 'rb') as f:
-                # Note.com likely expects 'resource' or 'file'
-                files = {'resource': (os.path.basename(file_path), f, 'image/png')}
-                # Some endpoints need extra data
-                data = {'type': 'Note::Image'} 
+                # The article suggests 'file' as the key
+                files = {'file': (os.path.basename(file_path), f, 'image/png')}
                 
-                response = self.session.post(url, headers=self.get_headers(), files=files, data=data)
+                # Note: The article didn't use 'data', so we try without it first.
+                # If we need 'type', we can add it back.
+                
+                response = self.session.post(url, headers=self.get_headers(), files=files)
                 response.raise_for_status()
                 
                 data = response.json()

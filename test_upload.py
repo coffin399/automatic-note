@@ -37,33 +37,40 @@ def test_upload():
         return
 
     endpoints = [
-        "https://note.com/api/v1/files",
-        "https://note.com/api/v1/images",
-        "https://note.com/api/v1/uploads",
-        "https://note.com/api/v2/files",
-        "https://note.com/api/v1/assets"
+        "https://note.com/api/v1/upload_image",
+        "https://note.com/api/v1/files"
     ]
     
     headers = uploader.get_headers()
+    # Remove Content-Type if it exists, requests adds it for files
+    if 'Content-Type' in headers:
+        del headers['Content-Type']
 
     for url in endpoints:
         print(f"Testing {url}...")
         try:
             with open(image_path, 'rb') as f:
-                files = {'file': ('eyecatch.png', f, 'image/png')}
-                # Try different data payloads
-                data_variants = [
-                    {'type': 'image', 'resource_type': 'Note::Note'},
-                    {},
-                    {'kind': 'note'}
-                ]
+                # Try 'file' key as per article
+                files = {'file': (os.path.basename(image_path), f, 'image/png')}
                 
-                for data in data_variants:
-                    response = uploader.session.post(url, headers=headers, files=files, data=data)
-                    print(f"  Data: {data} -> Status: {response.status_code}")
-                    if response.status_code == 200:
-                        print(f"SUCCESS! Response: {response.text[:200]}")
-                        return
+                # Try without extra data first
+                response = uploader.session.post(url, headers=headers, files=files)
+                print(f"  Files only -> Status: {response.status_code}")
+                if response.status_code == 200:
+                    print(f"SUCCESS! Response: {response.text[:200]}")
+                    return
+                
+                # Reset file pointer
+                f.seek(0)
+                
+                # Try with data
+                data = {'type': 'Note::Image'}
+                response = uploader.session.post(url, headers=headers, files=files, data=data)
+                print(f"  With data -> Status: {response.status_code}")
+                if response.status_code == 200:
+                    print(f"SUCCESS! Response: {response.text[:200]}")
+                    return
+
         except Exception as e:
             print(f"Failed: {e}")
 
