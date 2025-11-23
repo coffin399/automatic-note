@@ -38,7 +38,12 @@ def test_upload():
 
     endpoints = [
         "https://note.com/api/v1/upload_image",
-        "https://note.com/api/v1/files"
+        "https://note.com/api/v1/files",
+        "https://editor.note.com/api/v1/files",
+        "https://editor.note.com/api/v1/upload_image",
+        "https://note.com/api/v2/files",
+        "https://note.com/api/v3/files",
+        "https://note.com/api/v1/assets"
     ]
     
     headers = uploader.get_headers()
@@ -50,25 +55,35 @@ def test_upload():
         print(f"Testing {url}...")
         try:
             with open(image_path, 'rb') as f:
-                # Try 'file' key as per article
+                # Variant 1: 'file' key
+                f.seek(0)
                 files = {'file': (os.path.basename(image_path), f, 'image/png')}
-                
-                # Try without extra data first
                 response = uploader.session.post(url, headers=headers, files=files)
-                print(f"  Files only -> Status: {response.status_code}")
+                print(f"  ['file'] -> Status: {response.status_code}")
                 if response.status_code == 200:
-                    print(f"SUCCESS! Response: {response.text[:200]}")
+                    print(f"SUCCESS! Endpoint: {url} (Key: 'file')")
+                    print(f"Response: {response.text[:200]}")
+                    return
+
+                # Variant 2: 'resource' key
+                f.seek(0)
+                files = {'resource': (os.path.basename(image_path), f, 'image/png')}
+                response = uploader.session.post(url, headers=headers, files=files)
+                print(f"  ['resource'] -> Status: {response.status_code}")
+                if response.status_code == 200:
+                    print(f"SUCCESS! Endpoint: {url} (Key: 'resource')")
+                    print(f"Response: {response.text[:200]}")
                     return
                 
-                # Reset file pointer
+                # Variant 3: 'resource' + data
                 f.seek(0)
-                
-                # Try with data
+                files = {'resource': (os.path.basename(image_path), f, 'image/png')}
                 data = {'type': 'Note::Image'}
                 response = uploader.session.post(url, headers=headers, files=files, data=data)
-                print(f"  With data -> Status: {response.status_code}")
+                print(f"  ['resource' + data] -> Status: {response.status_code}")
                 if response.status_code == 200:
-                    print(f"SUCCESS! Response: {response.text[:200]}")
+                    print(f"SUCCESS! Endpoint: {url} (Key: 'resource' + data)")
+                    print(f"Response: {response.text[:200]}")
                     return
 
         except Exception as e:
