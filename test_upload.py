@@ -69,6 +69,22 @@ def test_upload():
         print("Image not found")
         return
 
+    # 1. Create a dummy draft to get note_id
+    print("[INFO] Creating dummy draft to get note_id...")
+    url_create = 'https://note.com/api/v1/text_notes'
+    payload_create = {"template_key": None}
+    
+    note_id = None
+    try:
+        response = uploader.session.post(url_create, headers=uploader.get_headers(), json=payload_create)
+        response.raise_for_status()
+        data = response.json()
+        note_id = data['data']['id']
+        print(f"[INFO] Draft created. ID: {note_id}")
+    except Exception as e:
+        print(f"[ERROR] Failed to create draft: {e}")
+        return
+
     endpoints = [
         "https://note.com/api/v1/image_upload/note_eyecatch"
     ]
@@ -81,12 +97,12 @@ def test_upload():
     # Only test the most likely header combination (Origin: note.com)
     headers = base_headers.copy()
     headers['Origin'] = 'https://note.com'
-    headers['Referer'] = 'https://note.com/notes/new'
+    headers['Referer'] = f'https://editor.note.com/notes/{note_id}/edit' # Update referer to edit page
 
-    keys_to_test = ['file', 'image', 'resource', 'eyecatch', 'data']
+    keys_to_test = ['resource', 'file']
 
     for url in endpoints:
-        print(f"Testing {url}...")
+        print(f"Testing {url} with note_id={note_id}...")
         
         for key in keys_to_test:
             try:
@@ -94,8 +110,11 @@ def test_upload():
                     f.seek(0)
                     files = {key: (os.path.basename(image_path), f, 'image/png')}
                     
-                    print(f"  Testing key: '{key}' ...")
-                    response = uploader.session.post(url, headers=headers, files=files)
+                    # Try with note_id in data
+                    data = {'note_id': note_id}
+                    
+                    print(f"  Testing key: '{key}' with data: {data} ...")
+                    response = uploader.session.post(url, headers=headers, files=files, data=data)
                     
                     print(f"    Status: {response.status_code}")
                     if response.status_code in [200, 201]:
@@ -104,6 +123,8 @@ def test_upload():
                         return
                     elif response.status_code == 403:
                         print(f"    Headers: {response.headers}")
+                    elif response.status_code == 400:
+                         print(f"    Response: {response.text[:200]}")
                         
             except Exception as e:
                 print(f"Failed with key {key}: {e}")
