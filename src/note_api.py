@@ -215,23 +215,12 @@ class NoteUploader:
         """
         Extracts hashtags and converts Markdown to HTML using markdown library.
         """
-        # 1. Extract Hashtags
+        # 1. Extract Hashtags (for metadata, if it works)
         hashtags = re.findall(r'#(\S+)', markdown_text)
         
-        # Remove hashtag lines from the text
-        lines = markdown_text.split('\n')
-        cleaned_lines = []
-        for line in lines:
-            # Keep headers (# Header), remove tags (#Tag)
-            # Also check if line is ONLY hashtags
-            if re.match(r'^(\s*#\S+\s*)+$', line) and not re.match(r'^#\s', line):
-                 continue
-            cleaned_lines.append(line)
-        
-        cleaned_text = '\n'.join(cleaned_lines)
-
         # 2. Convert to HTML using markdown library
-        html = markdown.markdown(cleaned_text)
+        # We NO LONGER strip hashtags from the body. They will appear as plain text.
+        html = markdown.markdown(markdown_text)
         
         return hashtags, html
 
