@@ -203,7 +203,9 @@ def main():
     run_report(config, generator, uploader, image_generator)
 
     # 2. Enter Scheduler Loop
-    schedule_times = config.get('schedule_times', ["08:00", "20:00"])
+    raw_schedule_times = config.get('schedule_times', ["08:00", "20:00"])
+    # Normalize times to ensure HH:MM format (e.g., "9:00" -> "09:00")
+    schedule_times = [t.strip().zfill(5) for t in raw_schedule_times]
     print(f"\n[SCHEDULE] Waiting for next scheduled time {schedule_times}...")
     print("Press Ctrl+C to stop.")
     

@@ -1,7 +1,8 @@
 import os
 import torch
 from diffusers import (
-    AutoPipelineForText2Image, 
+    StableDiffusionPipeline,
+    StableDiffusionXLPipeline,
     EulerAncestralDiscreteScheduler, 
     EulerDiscreteScheduler, 
     DPMSolverMultistepScheduler, 
@@ -59,20 +60,35 @@ class LocalImageGenerator:
                     kwargs["requires_safety_checker"] = False
 
             # Load the pipeline
-            # Check if model_id is a local file (safetensors/ckpt)
-            if os.path.isfile(self.model_id) or self.model_id.endswith((".safetensors", ".ckpt")):
-                logger.info(f"Loading from single file: {self.model_id} ({torch_dtype})")
-                self.pipe = AutoPipelineForText2Image.from_single_file(
-                    self.model_id,
-                    **kwargs
-                )
-            else:
-                # Load from folder or Hugging Face ID
-                logger.info(f"Loading from pretrained (folder/HF): {self.model_id} ({torch_dtype})")
-                self.pipe = AutoPipelineForText2Image.from_pretrained(
-                    self.model_id,
-                    **kwargs
-                )
+            # Try loading as SDXL first (since shiitakeMix caused shape errors in SD1.5 pipe)
+            try:
+                logger.info("Attempting to load as SDXL pipeline...")
+                if os.path.isfile(self.model_id) or self.model_id.endswith((".safetensors", ".ckpt")):
+                    self.pipe = StableDiffusionXLPipeline.from_single_file(
+                        self.model_id,
+                        **kwargs
+                    )
+                else:
+                    self.pipe = StableDiffusionXLPipeline.from_pretrained(
+                        self.model_id,
+                        **kwargs
+                    )
+                logger.info("Successfully loaded as SDXL pipeline.")
+            except Exception as e_sdxl:
+                logger.warning(f"Failed to load as SDXL pipeline: {e_sdxl}")
+                logger.info("Falling back to Standard Stable Diffusion (v1.5/2.1) pipeline...")
+                
+                if os.path.isfile(self.model_id) or self.model_id.endswith((".safetensors", ".ckpt")):
+                    self.pipe = StableDiffusionPipeline.from_single_file(
+                        self.model_id,
+                        **kwargs
+                    )
+                else:
+                    self.pipe = StableDiffusionPipeline.from_pretrained(
+                        self.model_id,
+                        **kwargs
+                    )
+                logger.info("Successfully loaded as Standard Stable Diffusion pipeline.")
             
             # Set Scheduler
             self._set_scheduler()
