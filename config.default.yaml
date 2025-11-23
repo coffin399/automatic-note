@@ -64,7 +64,7 @@ image_generation:
   enabled: false #falseにするとeyecatchフォルダからランダムで選ばれる,trueにすると見出し画像を生成AIが新規作成します。
   provider: "local" # local
   device: "cpu" # "cpu" or "cuda" (NVIDIA GPU) cudaにすると爆速で画像を生成します。GPUが必須です。CPUが非力な場合30分かかる場合があります
-  model_id: "models/ShiitakeMix.safetensors" # Path to local model file or HF ID
+  model_id: "models/shiitakeMix_v20.safetensors" # Path to local model file or HF ID
   steps: 20
   width: 1920
   height: 1006
