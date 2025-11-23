@@ -111,14 +111,15 @@ def main():
     run_report(config, generator, uploader)
 
     # 2. Enter Scheduler Loop
-    print("\n[SCHEDULE] Waiting for next scheduled time (08:00 or 20:00)...")
+    schedule_times = config.get('schedule_times', ["08:00", "20:00"])
+    print(f"\n[SCHEDULE] Waiting for next scheduled time {schedule_times}...")
     print("Press Ctrl+C to stop.")
     
     while True:
         now = datetime.now()
         current_time = now.strftime("%H:%M")
         
-        if current_time in ["08:00", "20:00"]:
+        if current_time in schedule_times:
             print(f"\n[SCHEDULE] It's {current_time}! Starting scheduled job.")
             run_report(config, generator, uploader)
             # Wait 61 seconds to ensure we don't run again in the same minute
