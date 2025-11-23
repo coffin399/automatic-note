@@ -70,6 +70,7 @@ image_generation:
   # Prompt Settings
   use_article_context: true # If true, appends AI-generated keywords from the article to the prompt
   prompts: # If provided, one of these will be selected randomly as the base prompt
-    - "masterpiece, best quality, 1girl, solo, looking at viewer, detailed background, cinematic lighting"
-    - "scenery, landscape, beautiful light, 4k, high resolution, detailed"
-    - "cyberpunk city, neon lights, futuristic, detailed, 8k"
+    - "(masterpiece, best quality:1.2), highly detailed, ultra-detailed, 1girl, solo, white hair, long hair, (glasses:1.1), sitting at wooden desk, (holding fountain pen:1.2), writing in a notebook, looking down, focused expression, library background, bookshelves, piles of books, vintage atmosphere, soft lighting, cinematic lighting, depth of field, rayon, detailed hands, warm color tone"
+    - "(masterpiece, best quality:1.2), highres, 1girl, solo, white hair, bob cut, hair tucked behind ear, casual clothes, sweater, sitting in a cafe, window seat, (writing in a diary:1.2), holding pen, cup of coffee on table, sunlight streaming through window, sunbeams, dust particles, gentle smile, looking at notebook, blurred background, cityscape through window, bright lighting, aesthetic, cozy atmosphere"
+    - "(masterpiece, best quality:1.2), illustration, highly detailed, 1girl, solo, white hair, messy hair, loose wavy hair, oversized hoodie, bare legs, sitting on sofa, knees up, (reading a book:1.3), holding an open book, intricate book cover, relaxed expression, slightly parted lips, living room, indoor, morning light, volumetric lighting, lens flare, soft focus, pastel color palette"
+    - "(masterpiece, best quality:1.2), absurdres, 1girl, solo, white hair, braided hair, frilled dress, victorian style, sitting on the floor, surrounded by scattered books, (reading a magic book:1.2), glowing book pages, dimly lit, candle light, sparkles, magical atmosphere, intense gaze, blue eyes, old library, dust, intricate details, mystical, shadows and highlights"
