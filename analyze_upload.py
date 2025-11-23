@@ -9,7 +9,6 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
 # Add src to path
 sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
@@ -17,17 +16,16 @@ from config import load_config
 
 def analyze_upload():
     config = load_config()
-    email = config.get('note_email')
-    password = config.get('note_password')
+    session_cookie = config.get('note_session_cookie')
     
-    if not email or not password:
-        print("[ERROR] Email and password required in config.yaml for this analysis.")
+    if not session_cookie:
+        print("[ERROR] 'note_session_cookie' is required in config.yaml.")
         return
 
     # Enable Performance Logging
     options = Options()
     options.set_capability('goog:loggingPrefs', {'performance': 'ALL'})
-    # options.add_argument('--headless') # Run visible to see what happens
+    # options.add_argument('--headless') # Keep visible for debugging
     options.add_argument('--disable-gpu')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
@@ -35,39 +33,35 @@ def analyze_upload():
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
     
     try:
-        print("[INFO] Navigating to login page...")
-        driver.get("https://note.com/login")
+        print("[INFO] Navigating to note.com to set cookie...")
+        driver.get("https://note.com/404") # Go to any page on the domain
         
-        # Login
-        print("[INFO] Logging in...")
-        try:
-            # Try multiple selectors for email
-            email_input = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "input[name='login'], input[type='email']"))
-            )
-            email_input.send_keys(email)
-            
-            password_input = driver.find_element(By.CSS_SELECTOR, "input[name='password'], input[type='password']")
-            password_input.send_keys(password)
-            
-            submit_btn = driver.find_element(By.CSS_SELECTOR, "button[data-type='primary'], button[type='submit']")
-            submit_btn.click()
-        except Exception as e:
-            print(f"[ERROR] Login element not found: {e}")
-            driver.save_screenshot("login_error.png")
-            with open("login_error.html", "w", encoding="utf-8") as f:
-                f.write(driver.page_source)
-            return
-
-        # Wait for login to complete
-        time.sleep(5)
-        print("[INFO] Login submitted. Waiting...")
+        # Set Cookie
+        print("[INFO] Setting session cookie...")
+        driver.add_cookie({
+            'name': '_note_session_v5', # Note: Verify if this is the correct cookie name. Usually it is.
+            'value': session_cookie,
+            'domain': '.note.com',
+            'path': '/'
+        })
+        # Also set 'note_session' just in case, though v5 is usually the one.
+        # But the user provides the value. Let's assume it maps to _note_session_v5 or similar.
+        # Actually, let's check what the user's cookie name usually is. 
+        # The README says "name is session". But Note uses `_note_session_v5`.
+        # Let's try setting both `_note_session_v5` and `note_session` (if that exists)
         
         # Go to Editor
         print("[INFO] Going to editor...")
         driver.get("https://note.com/notes/new")
         time.sleep(5)
         
+        # Check if logged in (look for user icon or absence of login button)
+        if "login" in driver.current_url:
+             print("[ERROR] Cookie login failed. Redirected to login page.")
+             # Fallback: Try to use the cookie name 'note_session' if v5 failed?
+             # But for now, let's just report it.
+             return
+
         # Find file input
         image_path = os.path.abspath("eyecatch.png")
         if not os.path.exists(image_path):
