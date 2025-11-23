@@ -2,7 +2,7 @@ import sys
 import os
 import random
 import time
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from config import load_config, validate_config
 from generator import GeminiGenerator
 from note_api import NoteUploader
@@ -15,7 +15,7 @@ def process_config_placeholders(config):
     """
     Recursively replaces placeholders in the config dictionary.
     Supported placeholders:
-    - {current_time}: Replaced with current timestamp (YYYY-MM-DD-HH-mm)
+    - {current_time}: Replaced with current timestamp (YYYY-MM-DD-HH-mm) in JST.
     """
     if isinstance(config, dict):
         return {k: process_config_placeholders(v) for k, v in config.items()}
@@ -23,8 +23,9 @@ def process_config_placeholders(config):
         return [process_config_placeholders(v) for v in config]
     elif isinstance(config, str):
         if "{current_time}" in config:
-            # Format: YYYY-MM-DD-HH-mm
-            timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M")
+            # Format: YYYY-MM-DD-HH-mm (JST)
+            jst = timezone(timedelta(hours=9))
+            timestamp = datetime.now(jst).strftime("%Y-%m-%d-%H-%M")
             return config.replace("{current_time}", timestamp)
         return config
     else:
