@@ -43,51 +43,49 @@ def test_upload():
         "https://note.com/api/v1/upload_image"
     ]
     
-    headers = uploader.get_headers()
-    headers['X-Requested-With'] = 'XMLHttpRequest'
-    # Remove Content-Type if it exists
-    if 'Content-Type' in headers:
-        del headers['Content-Type']
+    base_headers = uploader.get_headers()
+    base_headers['X-Requested-With'] = 'XMLHttpRequest'
+    if 'Content-Type' in base_headers:
+        del base_headers['Content-Type']
+
+    header_variants = [
+        {'Origin': 'https://editor.note.com', 'Referer': 'https://editor.note.com/'},
+        {'Origin': 'https://note.com', 'Referer': 'https://note.com/'},
+        {'Origin': 'https://note.com', 'Referer': 'https://note.com/notes/new'},
+        {'Origin': 'https://editor.note.com', 'Referer': 'https://editor.note.com/notes/new'}
+    ]
 
     for url in endpoints:
         print(f"Testing {url}...")
-        try:
-            with open(image_path, 'rb') as f:
-                # Variant 1: 'file' key
-                f.seek(0)
-                files = {'file': (os.path.basename(image_path), f, 'image/png')}
-                response = uploader.session.post(url, headers=headers, files=files)
-                print(f"  ['file'] -> Status: {response.status_code}")
-                if response.status_code == 200:
-                    print(f"SUCCESS! Endpoint: {url} (Key: 'file')")
-                    print(f"Response: {response.text[:200]}")
-                    return
-                elif response.status_code == 403:
-                    print(f"    Headers: {response.headers}")
+        for h_variant in header_variants:
+            headers = base_headers.copy()
+            headers.update(h_variant)
+            print(f"  Headers: Origin={headers['Origin']}, Referer={headers['Referer']}")
+            
+            try:
+                with open(image_path, 'rb') as f:
+                    # Variant 1: 'file' key
+                    f.seek(0)
+                    files = {'file': (os.path.basename(image_path), f, 'image/png')}
+                    response = uploader.session.post(url, headers=headers, files=files)
+                    print(f"    ['file'] -> Status: {response.status_code}")
+                    if response.status_code == 200:
+                        print(f"SUCCESS! Endpoint: {url} (Key: 'file')")
+                        print(f"Response: {response.text[:200]}")
+                        return
+                    
+                    # Variant 2: 'resource' key
+                    f.seek(0)
+                    files = {'resource': (os.path.basename(image_path), f, 'image/png')}
+                    response = uploader.session.post(url, headers=headers, files=files)
+                    print(f"    ['resource'] -> Status: {response.status_code}")
+                    if response.status_code == 200:
+                        print(f"SUCCESS! Endpoint: {url} (Key: 'resource')")
+                        print(f"Response: {response.text[:200]}")
+                        return
 
-                # Variant 2: 'resource' key
-                f.seek(0)
-                files = {'resource': (os.path.basename(image_path), f, 'image/png')}
-                response = uploader.session.post(url, headers=headers, files=files)
-                print(f"  ['resource'] -> Status: {response.status_code}")
-                if response.status_code == 200:
-                    print(f"SUCCESS! Endpoint: {url} (Key: 'resource')")
-                    print(f"Response: {response.text[:200]}")
-                    return
-                
-                # Variant 3: 'resource' + data
-                f.seek(0)
-                files = {'resource': (os.path.basename(image_path), f, 'image/png')}
-                data = {'type': 'Note::Image'}
-                response = uploader.session.post(url, headers=headers, files=files, data=data)
-                print(f"  ['resource' + data] -> Status: {response.status_code}")
-                if response.status_code == 200:
-                    print(f"SUCCESS! Endpoint: {url} (Key: 'resource' + data)")
-                    print(f"Response: {response.text[:200]}")
-                    return
-
-        except Exception as e:
-            print(f"Failed: {e}")
+            except Exception as e:
+                print(f"Failed: {e}")
 
 if __name__ == "__main__":
     test_upload()
