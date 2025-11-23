@@ -163,7 +163,8 @@ class LocalImageGenerator:
                 negative_prompt=negative_prompt,
                 width=width,
                 height=height,
-                num_inference_steps=num_inference_steps
+                num_inference_steps=num_inference_steps,
+                cross_attention_kwargs={} # Fix for "NoneType is not iterable" in some diffusers versions
             ).images[0]
             
             # Ensure directory exists
